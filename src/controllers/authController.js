@@ -1,4 +1,4 @@
-const userModel = require("../models/userModel");
+const customerModel = require("../models/customerModel");
 const userRefreshTokenModel = require("../models/userRefreshTokenModel");
 const { createToken } = require("../utils/createToken");
 const { responseReturn } = require("../utils/response");
@@ -15,7 +15,7 @@ const register = async (req, res) => {
       });
     }
 
-    const existingEmail = userModel.findOne({ email });
+    const existingEmail = customerModel.findOne({ email });
     if (existingEmail) {
       return responseReturn(res, 400, {
         message: "Email already exists",
@@ -31,7 +31,7 @@ const register = async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
 
-    const newUser = await userModel.create({
+    const newUser = await customerModel.create({
       name,
       email,
       password: passwordHash,
@@ -54,7 +54,7 @@ const login = async (req, res) => {
       });
     }
 
-    const existingUser = await userModel.findOne({ email }).select("+password");
+    const existingUser = await customerModel.findOne({ email }).select("+password");
     if (!existingUser) {
       return responseReturn(res, 401, { message: "Invalid email or password" });
     }

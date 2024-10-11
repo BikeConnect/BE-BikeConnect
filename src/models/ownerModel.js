@@ -1,6 +1,6 @@
 const { Schema, model } = require("mongoose");
 
-const customerSchema = new Schema(
+const ownerSchema = new Schema(
   {
     name: {
       type: String,
@@ -22,6 +22,14 @@ const customerSchema = new Schema(
       Type: String,
       required: true,
     },
+    role: {
+      Type: String,
+      default: "owner",
+    },
+    status: {
+      type: String,
+      default: "pending",
+    },
     currentAddress: {
       Type: String,
       required: true,
@@ -32,4 +40,4 @@ const customerSchema = new Schema(
   }
 );
 
-module.exports = model("customers", customerSchema);
+module.exports = model("owners", ownerSchema);

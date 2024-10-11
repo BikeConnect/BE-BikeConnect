@@ -6,6 +6,10 @@ const transactionHistorySchema = new Schema(
       type: Schema.ObjectId,
       required: true,
     },
+    ownerId: {
+      type: Schema.ObjectId,
+      required: true,
+    },
     bookingId: {
       type: Schema.ObjectId,
       required: true,

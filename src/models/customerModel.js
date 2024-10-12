@@ -15,11 +15,11 @@ const customerSchema = new Schema(
       required: true,
     },
     phone: {
-      Type: Number,
+      type: Number,
       required: true,
     },
     image: {
-      Type: String,
+      type: String,
       required: true,
     },
     role: {
@@ -27,7 +27,7 @@ const customerSchema = new Schema(
       required: true,
     },
     currentAddress: {
-      Type: String,
+      type: String,
       required: true,
     },
   },

@@ -23,7 +23,7 @@ const customerSchema = new Schema(
       required: true,
     },
     role: {
-      Type: String,
+      type: String,
       required: true,
     },
     currentAddress: {

@@ -15,15 +15,15 @@ const ownerSchema = new Schema(
       required: true,
     },
     phone: {
-      Type: Number,
+      type: Number,
       required: true,
     },
     image: {
-      Type: String,
+      type: String,
       required: true,
     },
     role: {
-      Type: String,
+      type: String,
       default: "owner",
     },
     status: {
@@ -31,7 +31,7 @@ const ownerSchema = new Schema(
       default: "pending",
     },
     currentAddress: {
-      Type: String,
+      type: String,
       required: true,
     },
   },

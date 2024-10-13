@@ -16,11 +16,11 @@ const ownerSchema = new Schema(
     },
     phone: {
       type: Number,
-      required: true,
+      default: 0,
     },
     image: {
       type: String,
-      required: true,
+      default: "",
     },
     role: {
       type: String,
@@ -32,7 +32,7 @@ const ownerSchema = new Schema(
     },
     currentAddress: {
       type: String,
-      required: true,
+      default: "",
     },
   },
   {

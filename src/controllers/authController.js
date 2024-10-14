@@ -105,6 +105,10 @@ const owner_login = async (req, res) => {
       return responseReturn(res, 401, { message: "Invalid email or password" });
     }
 
+    if (!existingUser.isVerified) {
+      return responseReturn(res, 401, { message: "Please verify your email" });
+    }
+
     if (existingUser) {
       const match = await bcrypt.compare(password, existingUser.password);
       if (match) {
@@ -142,12 +146,11 @@ const owner_login = async (req, res) => {
 };
 
 const owner_logout = async (req, res) => {
-  res
-    .cookie("accessToken", "", {
-      httpOnly: true,
-      expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-    })
-    // .send();
+  res.cookie("accessToken", "", {
+    httpOnly: true,
+    expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+  });
+  // .send();
   return responseReturn(res, 200, { message: "Logout Successfully" });
 };
 

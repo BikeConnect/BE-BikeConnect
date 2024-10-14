@@ -7,6 +7,14 @@ const { responseReturn } = require("../utils/response");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { userValidate } = require("../utils/validation");
+const crypto = require("node:crypto");
+// const sendEmail = require("../utils/mail");
+const {
+  sendVerificationEmail,
+  sendWelcomeEmail,
+  sendPasswordResetEmail,
+  sendResetSuccessEmail,
+} = require("../mailtrap/email");
 
 const admin_login = async (req, res) => {
   const { email, password } = req.body;
@@ -48,10 +56,15 @@ const owner_register = async (req, res) => {
     if (existingEmail) {
       responseReturn(res, 404, { error: "Email already existed" });
     } else {
+      const verificationToken = Math.floor(
+        100000 + Math.random() * 900000
+      ).toString();
       const owner = await ownerModel.create({
         name,
         email,
         password: await bcrypt.hash(password, 10),
+        verificationToken,
+        verificationTokenExpiresAt: Date.now() + 24 * 60 * 60 * 1000,
       });
       await ownerCustomerModel.create({
         myId: owner.id,
@@ -63,6 +76,8 @@ const owner_register = async (req, res) => {
       res.cookie("accessToken", accessToken, {
         expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       });
+      await sendVerificationEmail(owner.email, verificationToken);
+
       responseReturn(res, 201, {
         accessToken,
         message: "Register Successfully",
@@ -133,7 +148,42 @@ const owner_logout = async (req, res) => {
       httpOnly: true,
       expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
     })
-    .send();
+    // .send();
+  return responseReturn(res, 200, { message: "Logout Successfully" });
+};
+
+const owner_verify_email = async (req, res) => {
+  const { code } = req.body;
+  try {
+    const owner = await ownerModel.findOne({
+      verificationToken: code,
+      verificationTokenExpiresAt: { $gt: Date.now() },
+    });
+    if (!owner) {
+      return responseReturn(res, 404, {
+        status: "error",
+        message: "Invalid or expired verification token",
+      });
+    }
+    owner.isVerified = true;
+    owner.verificationToken = undefined;
+    owner.verificationTokenExpiresAt = undefined;
+    await owner.save();
+
+    await sendWelcomeEmail(owner.email, owner.name);
+    responseReturn(res, 200, {
+      message: "Email verified successfully",
+      owner: {
+        ...owner._doc,
+        password: undefined,
+      },
+    });
+  } catch (error) {
+    return responseReturn(res, 500, {
+      status: "error",
+      message: error.message,
+    });
+  }
 };
 
 const checkRefreshToken = async (req, res) => {
@@ -199,10 +249,67 @@ const checkRefreshToken = async (req, res) => {
   }
 };
 
+const owner_forgot_password = async (req, res) => {
+  const { email } = req.body;
+  try {
+    const owner = await ownerModel.findOne({ email });
+    if (!owner) {
+      return responseReturn(res, 404, { error: "Email Not Found" });
+    }
+    //generate token
+    const resetToken = crypto.randomBytes(32).toString("hex");
+    const resetTokenExpire = Date.now() + 5 * 60 * 1000; // 5 minutes
+    owner.resetPasswordToken = resetToken;
+    owner.resetPasswordExpiresAt = resetTokenExpire;
+    await owner.save();
+
+    //send email
+    await sendPasswordResetEmail(
+      owner.email,
+      `${process.env.CLIENT_URL}/owner-reset-password/${resetToken}`
+    ); //tham so thu 2 la link reset password 'http://localhost:3000/reset-password/${resetToken}'
+    responseReturn(res, 200, {
+      message: "Password reset link sent to your email!",
+    });
+  } catch (error) {
+    console.error(error.message);
+    responseReturn(res, 500, { error: "Internal Server Error" });
+  }
+};
+
+const owner_reset_password = async (req, res) => {
+  try {
+    const { token } = req.params;
+    const { password } = req.body;
+    const owner = await ownerModel.findOne({
+      resetPasswordToken: token,
+      resetPasswordExpiresAt: { $gt: Date.now() },
+    });
+    if (!owner) {
+      return responseReturn(res, 404, {
+        error: "Invalid or expired reset token",
+      });
+    }
+    const hashedPassword = await bcrypt.hash(password, 10);
+    owner.password = hashedPassword;
+    owner.resetPasswordToken = undefined;
+    owner.resetPasswordExpiresAt = undefined;
+    await owner.save();
+    await sendResetSuccessEmail(owner.email);
+    responseReturn(res, 200, {
+      message: "Password reset successfully",
+    });
+  } catch (error) {
+    console.log(error.message);
+  }
+};
 module.exports = {
   admin_login,
   owner_register,
   owner_login,
   owner_logout,
+  owner_verify_email,
   checkRefreshToken,
+  owner_forgot_password,
+  owner_reset_password,
 };

@@ -32,20 +32,3 @@ module.exports.verifyToken = (req, res, next) => {
     }
   }
 };
-
-// module.exports.verifyToken = (req, res, next) => {
-//   if (!req.headers["authorization"]) {
-//     responseReturn(res, 401, { status: "error", message: "Unauthorized" });
-//   }
-//   const authHeader = req.headers["authorization"];
-//   const bearerToken = authHeader.split(" ");
-//   const token = bearerToken[1];
-
-//   JWT.verify(token, process.env.SECRET_ACCESS_TOKEN, (err, payload) => {
-//     if (err) {
-//       return responseReturn(res, 403, { status: "error", message: "Forbidden" });
-//     }
-//     req.payload = payload;
-//     next();
-//   });
-// };

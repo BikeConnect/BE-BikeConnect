@@ -1,9 +1,9 @@
 const authController = require("../controllers/authController");
-const { checkAuth } = require("../middlewares/checkAuth");
+const { checkAuthOwner } = require("../middlewares/checkAuth");
 const { verifyToken } = require("../middlewares/verifyToken");
 const router = require("express").Router();
 
-router.get("/auth/check-auth",verifyToken,checkAuth)
+router.get("/auth/check-auth",verifyToken,checkAuthOwner)
 
 router.post("/auth/admin-login", authController.admin_login);
 router.post("/auth/owner-register", authController.owner_register);

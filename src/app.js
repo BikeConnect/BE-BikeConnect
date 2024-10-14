@@ -4,7 +4,7 @@ const app = express();
 const cookieParser = require("cookie-parser");
 const compression = require("compression");
 const morgan = require("morgan");
-const { dbConnect } = require("./utils/dbConnect");
+const { dbConnect } = require("./database/dbConnect");
 require("dotenv").config();
 
 

@@ -8,7 +8,8 @@ const { dbConnect } = require("./database/dbConnect");
 require("dotenv").config();
 
 
-const authRoutes = require('./routes/authRoutes')
+const authRoutes = require('./routes/authRoutes');
+const customerRoutes = require('./routes/home/customerRoutes');
 
 
 app.use(morgan("dev"));
@@ -20,6 +21,7 @@ app.use(cookieParser());
 dbConnect();
 
 app.use('/api',authRoutes)
+app.use('/api',customerRoutes)
 
 
 app.use((req, res, next) => {

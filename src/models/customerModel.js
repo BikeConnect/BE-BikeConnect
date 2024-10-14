@@ -16,20 +16,24 @@ const customerSchema = new Schema(
     },
     phone: {
       type: Number,
-      required: true,
+      default: "",
     },
     image: {
       type: String,
-      required: true,
+      default: "",
     },
-    role: {
-      type: String,
-      required: true,
-    },
+    // role: {
+    //   type: String,
+    //   required: true,
+    // },
     currentAddress: {
       type: String,
-      required: true,
+      default: "",
     },
+    resetPasswordToken: String,
+    resetPasswordExpiresAt: Date,
+    verificationToken: String,
+    verificationTokenExpiresAt: Date,
   },
   {
     timestamps: true,

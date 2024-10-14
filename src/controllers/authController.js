@@ -8,13 +8,12 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { userValidate } = require("../utils/validation");
 const crypto = require("node:crypto");
-// const sendEmail = require("../utils/mail");
 const {
   sendVerificationEmail,
   sendWelcomeEmail,
   sendPasswordResetEmail,
   sendResetSuccessEmail,
-} = require("../mailtrap/email");
+} = require("../sendmail/email");
 
 const admin_login = async (req, res) => {
   const { email, password } = req.body;

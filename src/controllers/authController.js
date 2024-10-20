@@ -148,7 +148,7 @@ const owner_login = async (req, res) => {
 const owner_logout = async (req, res) => {
   res.cookie("accessToken", "", {
     httpOnly: true,
-    expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    expires: new Date(Date.now()),
   });
   // .send();
   return responseReturn(res, 200, { message: "Logout Successfully" });

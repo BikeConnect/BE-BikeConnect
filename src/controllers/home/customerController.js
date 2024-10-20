@@ -1,4 +1,7 @@
-const { sendVerificationEmail, sendWelcomeEmail } = require("../../sendmail/email");
+const {
+  sendVerificationEmail,
+  sendWelcomeEmail,
+} = require("../../sendmail/email");
 const customerModel = require("../../models/customerModel");
 const ownerCustomerModel = require("../../models/message/ownerCustomerModel");
 const userRefreshTokenModel = require("../../models/userRefreshTokenModel");
@@ -26,7 +29,7 @@ const customer_register = async (req, res) => {
         email: email.trim(),
         password: await bcrypt.hash(password, 10),
         verificationToken,
-        verificationTokenExpiresAt: Date.now() + 24 * 60 * 60 * 1000, 
+        verificationTokenExpiresAt: Date.now() + 24 * 60 * 60 * 1000,
       });
       await ownerCustomerModel.create({
         myId: customer.id,
@@ -112,7 +115,7 @@ const customer_login = async (req, res) => {
 const customer_logout = async (req, res) => {
   res.cookie("customerToken", "", {
     httpOnly: true,
-    expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    expires: new Date(Date.now()),
   });
   return responseReturn(res, 200, { message: "Logout Successfully" });
 };
@@ -149,10 +152,10 @@ const customer_verify_email = async (req, res) => {
       message: error.message,
     });
   }
-}
+};
 module.exports = {
   customer_register,
   customer_login,
   customer_logout,
-  customer_verify_email
+  customer_verify_email,
 };

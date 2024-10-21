@@ -7,10 +7,9 @@ const morgan = require("morgan");
 const { dbConnect } = require("./database/dbConnect");
 require("dotenv").config();
 
-
-const authRoutes = require('./routes/authRoutes');
-const customerRoutes = require('./routes/home/customerRoutes');
-
+const authRoutes = require("./routes/authRoutes");
+const customerRoutes = require("./routes/home/customerRoutes");
+// const postOwer = require("./routes/post/index");
 
 app.use(morgan("dev"));
 app.use(compression());
@@ -20,8 +19,9 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 dbConnect();
 
-app.use('/api',authRoutes)
-app.use('/api',customerRoutes)
+app.use("/api", authRoutes);
+app.use("/api", customerRoutes);
+app.use("/api/post", require("./routes/post"));
 
 
 app.use((req, res, next) => {
@@ -39,6 +39,5 @@ app.use((error, req, res, next) => {
     message: error.message || "Internal Server Error",
   });
 });
-
 
 module.exports = app;

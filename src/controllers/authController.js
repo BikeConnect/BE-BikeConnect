@@ -90,6 +90,10 @@ const owner_register = async (req, res) => {
 
 const owner_login = async (req, res) => {
   const { email, password } = req.body;
+<<<<<<< HEAD
+=======
+
+>>>>>>> Asset
   try {
     if (!email || !password) {
       return responseReturn(res, 400, {
@@ -112,7 +116,14 @@ const owner_login = async (req, res) => {
     if (existingUser) {
       const match = await bcrypt.compare(password, existingUser.password);
       if (match) {
+<<<<<<< HEAD
         const token = await createToken({ id: existingUser._id });
+=======
+        const token = await createToken({
+          id: existingUser._id,
+          email: existingUser.email,
+        });
+>>>>>>> Asset
         const accessToken = token.accessToken;
         const refreshToken = token.refreshToken;
 
@@ -148,12 +159,25 @@ const owner_login = async (req, res) => {
 const owner_logout = async (req, res) => {
   res.cookie("accessToken", "", {
     httpOnly: true,
+<<<<<<< HEAD
     expires: new Date(Date.now()),
+=======
+    expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+>>>>>>> Asset
   });
   // .send();
   return responseReturn(res, 200, { message: "Logout Successfully" });
 };
 
+<<<<<<< HEAD
+=======
+const asyncHandler = fn => {
+  return (req, res, next) => {
+    fn(req, res, next).catch(next)
+  }
+}
+
+>>>>>>> Asset
 const owner_verify_email = async (req, res) => {
   const { code } = req.body;
   try {
@@ -305,6 +329,26 @@ const owner_reset_password = async (req, res) => {
     console.log(error.message);
   }
 };
+<<<<<<< HEAD
+=======
+
+const verifyToken = asyncHandler(async (req, res, next) => {
+  const token = req.cookies.accessToken || req.headers.authorization?.split(' ')[1];
+
+  if (!token) {
+    return responseReturn(res, 401, { error: "No token provided" });
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.SECRET_ACCESS_TOKEN);
+    req.user = decoded;
+    next();
+  } catch (error) {
+    return responseReturn(res, 401, { error: "Invalid token" });
+  }
+});
+
+>>>>>>> Asset
 module.exports = {
   admin_login,
   owner_register,
@@ -314,4 +358,9 @@ module.exports = {
   checkRefreshToken,
   owner_forgot_password,
   owner_reset_password,
+<<<<<<< HEAD
+=======
+  asyncHandler,
+  verifyToken,
+>>>>>>> Asset
 };

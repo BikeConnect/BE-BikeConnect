@@ -48,4 +48,8 @@ const ownerSchema = new Schema(
   }
 );
 
+<<<<<<< HEAD
 module.exports = model("owners", ownerSchema);
+=======
+module.exports = model("Owner", ownerSchema);
+>>>>>>> Asset

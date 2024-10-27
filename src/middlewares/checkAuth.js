@@ -10,10 +10,7 @@ module.exports.checkAuthOwner = async (req, res, next) => {
       return responseReturn(res, 404, { message: "Owner not found" });
     }
     responseReturn(res, 200, { owner });
-<<<<<<< HEAD
-=======
     next()
->>>>>>> Asset
   } catch (error) {
     console.log(error.message);
   }

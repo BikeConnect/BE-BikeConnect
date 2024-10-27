@@ -1,17 +1,11 @@
 const { responseReturn } = require("../utils/response");
 const jwt = require("jsonwebtoken");
 module.exports.verifyToken = (req, res, next) => {
-<<<<<<< HEAD
-  const accessToken =
-    req.cookies.accessToken ||
-    (req.headers.authorization && req.headers.authorization.split(" ")[1]);
-=======
 
   const accessToken =
     req.cookies.accessToken ||
     (req.headers.authorization && req.headers.authorization.split(" ")[1]);
 
->>>>>>> Asset
   if (!accessToken) {
     return res.status(401).json({ message: "You are not authenticated" });
   } else {
@@ -20,13 +14,10 @@ module.exports.verifyToken = (req, res, next) => {
         accessToken,
         process.env.SECRET_ACCESS_TOKEN
       );
-<<<<<<< HEAD
-=======
 
       const ownerId = decodeAccessToken.id;
       req.ownerId = ownerId;
 
->>>>>>> Asset
       req.accessToken = { value: accessToken, exp: decodeAccessToken.exp };
       req.id = decodeAccessToken.id;
       next();

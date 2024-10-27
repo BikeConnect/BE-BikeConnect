@@ -58,13 +58,16 @@ const owner_register = async (req, res) => {
       const verificationToken = Math.floor(
         100000 + Math.random() * 900000
       ).toString();
+
       const owner = await ownerModel.create({
         name,
         email,
         password: await bcrypt.hash(password, 10),
+        shopInfo: {},
         verificationToken,
         verificationTokenExpiresAt: Date.now() + 24 * 60 * 60 * 1000,
       });
+
       await ownerCustomerModel.create({
         myId: owner.id,
       });
@@ -90,10 +93,6 @@ const owner_register = async (req, res) => {
 
 const owner_login = async (req, res) => {
   const { email, password } = req.body;
-<<<<<<< HEAD
-=======
-
->>>>>>> Asset
   try {
     if (!email || !password) {
       return responseReturn(res, 400, {
@@ -116,14 +115,10 @@ const owner_login = async (req, res) => {
     if (existingUser) {
       const match = await bcrypt.compare(password, existingUser.password);
       if (match) {
-<<<<<<< HEAD
-        const token = await createToken({ id: existingUser._id });
-=======
         const token = await createToken({
           id: existingUser._id,
           email: existingUser.email,
         });
->>>>>>> Asset
         const accessToken = token.accessToken;
         const refreshToken = token.refreshToken;
 
@@ -159,25 +154,18 @@ const owner_login = async (req, res) => {
 const owner_logout = async (req, res) => {
   res.cookie("accessToken", "", {
     httpOnly: true,
-<<<<<<< HEAD
-    expires: new Date(Date.now()),
-=======
     expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
->>>>>>> Asset
   });
   // .send();
   return responseReturn(res, 200, { message: "Logout Successfully" });
 };
 
-<<<<<<< HEAD
-=======
 const asyncHandler = fn => {
   return (req, res, next) => {
     fn(req, res, next).catch(next)
   }
 }
 
->>>>>>> Asset
 const owner_verify_email = async (req, res) => {
   const { code } = req.body;
   try {
@@ -329,8 +317,6 @@ const owner_reset_password = async (req, res) => {
     console.log(error.message);
   }
 };
-<<<<<<< HEAD
-=======
 
 const verifyToken = asyncHandler(async (req, res, next) => {
   const token = req.cookies.accessToken || req.headers.authorization?.split(' ')[1];
@@ -348,7 +334,6 @@ const verifyToken = asyncHandler(async (req, res, next) => {
   }
 });
 
->>>>>>> Asset
 module.exports = {
   admin_login,
   owner_register,
@@ -358,9 +343,6 @@ module.exports = {
   checkRefreshToken,
   owner_forgot_password,
   owner_reset_password,
-<<<<<<< HEAD
-=======
   asyncHandler,
   verifyToken,
->>>>>>> Asset
 };

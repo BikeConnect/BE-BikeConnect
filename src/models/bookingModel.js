@@ -6,6 +6,11 @@ const bookingSchema = new Schema(
       type: Schema.ObjectId,
       required: true,
     },
+    vehicleId: {
+      type: Schema.ObjectId,
+      ref:"Post",
+      required: true,
+    },
     status: {
       type: String,
       default: "pending",

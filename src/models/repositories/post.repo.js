@@ -29,22 +29,21 @@ const filterPosts = async (filterOptions) => {
       }
     }
 
-    // Category filter
     if (filterOptions.category) {
       query.category = filterOptions.category;
     }
 
-    // Brand filter
     if (filterOptions.brand) {
-      query.brand = filterOptions.brand;
+      query.brand = { 
+        $regex: filterOptions.brand, 
+        $options: 'i' 
+      };
     }
 
-    // Availability status filter
     if (filterOptions.availability_status) {
       query.availability_status = filterOptions.availability_status;
     }
 
-    // Rating filter
     if (filterOptions.rating) {
       const ratingValue = Number(filterOptions.rating);
       if (ratingValue >= 1 && ratingValue <= 5) {
@@ -61,7 +60,6 @@ const filterPosts = async (filterOptions) => {
       query.rating = { $lte: Number(filterOptions.maxRating) };
     }
 
-    // Sorting
     let sortOptions = {};
     if (filterOptions.sortBy) {
       switch (filterOptions.sortBy) {
@@ -91,7 +89,6 @@ const filterPosts = async (filterOptions) => {
       .sort(sortOptions)
       .lean();
 
-     // Nếu không có posts nào thỏa mãn điều kiện
     if (!posts || posts.length === 0) {
       return {
         posts: [],
@@ -99,7 +96,6 @@ const filterPosts = async (filterOptions) => {
       };
     }
 
-    // Get min and max prices from all posts for reference
     const priceStats = await post.aggregate([
       {
         $group: {

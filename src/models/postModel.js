@@ -46,21 +46,23 @@ const postSchema = new Schema(
       type: String,
       required: true,
     },
-    images: [{
-      url: String,
-      publicId: String
-    }],
+    images: [
+      {
+        url: String,
+        publicId: String,
+      },
+    ],
     rating: {
       type: Number,
       default: 5,
       min: [1, "Rating must be at least 1"],
       max: [5, "Rating must be at most 5"],
-      set: function(v) {
+      set: function (v) {
         if (v !== undefined) {
           return Math.round(v * 10) / 10;
         }
         return this.rating;
-      }
+      },
     },
     availability_status: {
       type: String,
@@ -77,6 +79,10 @@ const postSchema = new Schema(
   }
 );
 
+// Create index for searchPost
+postSchema.index({ name: "text", description: "text" });
+
+// Create slug for post
 postSchema.pre("save", function (next) {
   this.product_slug = slugify(this.name, { lower: true });
   next();

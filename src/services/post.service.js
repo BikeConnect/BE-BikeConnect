@@ -1,8 +1,9 @@
 "use strict";
 
 const { post } = require("../models/postModel");
-const cloudinary = require('../configs/cloudinaryConfig');
+const cloudinary = require("../configs/cloudinaryConfig");
 const { removeUndefinedObject, updateNestedObjectParser } = require("../utils");
+const { searchPostByCustomer } = require("../models/repositories/post.repo");
 
 // Owner
 class PostFactory {
@@ -18,25 +19,51 @@ class PostFactory {
   static async updatePost(postId, payload) {
     try {
       const currentPost = await post.findById(postId);
-    if (!currentPost) {
-      throw new Error("Post not found");
-    }
+      if (!currentPost) {
+        throw new Error("Post not found");
+      }
 
-    if (payload.images && payload.images.length > 0) {
-      if (currentPost.images && currentPost.images.length > 0) {
-        for (const image of currentPost.images) {
+      if (payload.images && payload.images.length > 0) {
+        if (currentPost.images && currentPost.images.length > 0) {
+          for (const image of currentPost.images) {
+            if (image.publicId) {
+              await cloudinary.uploader.destroy(image.publicId);
+            }
+          }
+        }
+      }
+
+      const updatedPost = await post.findByIdAndUpdate(postId, payload, {
+        new: true,
+      });
+      if (!updatedPost) throw new Error("Update Post error!");
+      return updatedPost;
+    } catch (error) {
+      throw new Error(`Error updating post: ${error.message}`);
+    }
+  }
+
+  static async deletePost(postId) {
+    try {
+      const postToDelete = await post.findById(postId);
+
+      if (!postToDelete) {
+        throw new Error("Post not found");
+      }
+
+      if (postToDelete.images && postToDelete.images.length > 0) {
+        for (const image of postToDelete.images) {
           if (image.publicId) {
             await cloudinary.uploader.destroy(image.publicId);
           }
         }
       }
-    }
 
-    const updatedPost = await post.findByIdAndUpdate(postId, payload, { new: true });
-    if (!updatedPost) throw new Error("Update Post error!");
-    return updatedPost;
+      const deletedPost = await post.findByIdAndDelete(postId);
+      if (!deletedPost) throw new Error("Delete Post error!");
+      return deletedPost;
     } catch (error) {
-      throw new Error(`Error updating post: ${error.message}`);
+      throw new Error(`Error deleting post: ${error.message}`);
     }
   }
 
@@ -49,31 +76,11 @@ class PostFactory {
       return foundPost;
     } catch (error) {
       throw new Error(`Error fetching post: ${error.message}`);
-    } 
+    }
   }
 
-  static async deletePost(postId) {
-    try {
-      const postToDelete = await post.findById(postId);
-      
-      if (!postToDelete) {
-        throw new Error("Post not found");
-      }
-  
-      if (postToDelete.images && postToDelete.images.length > 0) {
-        for (const image of postToDelete.images) {
-          if (image.publicId) {
-            await cloudinary.uploader.destroy(image.publicId);
-          }
-        }
-      }
-  
-      const deletedPost = await post.findByIdAndDelete(postId);
-      if (!deletedPost) throw new Error("Delete Post error!");
-      return deletedPost;
-    } catch (error) {
-      throw new Error(`Error deleting post: ${error.message}`);
-    }
+  static async getListSearchPost( {keySearch} ) {
+    return await searchPostByCustomer({keySearch})
   }
 }
 

@@ -15,8 +15,9 @@ class PostController {
         ...req.body,
         ownerId: ownerId,
       };
-
+      
       postData.images = [];
+
       if (req.files) {
         if (req.files.images) {
           postData.images = postData.images.concat(
@@ -39,6 +40,11 @@ class PostController {
         metadata: await PostService.createPost(postData),
       }).send(res);
     } catch (error) {
+      if (req.files && req.files.images) {
+        for (const file of req.files.images) {
+          await cloudinary.uploader.destroy(file.filename);
+        }
+      }
       next(error);
     }
   };
@@ -112,6 +118,13 @@ class PostController {
       next(error);
     }
   };
+
+  getListSearchPost = async (req, res, next) => {
+    new SuccessResponse({
+      message: "Get list getListSearchPost success!",
+      metadata: await PostService.getListSearchPost(req.params),
+    }).send(res);
+  }
 }
 
 module.exports = new PostController();

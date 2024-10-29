@@ -3,7 +3,7 @@
 const { post } = require("../models/postModel");
 const cloudinary = require("../configs/cloudinaryConfig");
 const { removeUndefinedObject, updateNestedObjectParser } = require("../utils");
-const { searchPostByCustomer } = require("../models/repositories/post.repo");
+const { searchPostByCustomer, filterPosts } = require("../models/repositories/post.repo");
 
 // Owner
 class PostFactory {
@@ -81,6 +81,14 @@ class PostFactory {
 
   static async getListSearchPost( {keySearch} ) {
     return await searchPostByCustomer({keySearch})
+  }
+
+  static async filterPosts(filterOptions) {
+    try {
+      return await filterPosts(filterOptions);
+    } catch (error) {
+      throw new Error(`Error filtering posts: ${error.message}`);
+    }
   }
 }
 

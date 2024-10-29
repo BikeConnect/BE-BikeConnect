@@ -7,7 +7,12 @@ const { asyncHandler } = require("../../controllers/authController");
 const { verifyToken } = require("../../middlewares/verifyToken");
 const { handleImageUpload } = require("../../middlewares/multerHandler");
 
-router.get('/search/:keySearch', asyncHandler(postController.getListSearchPost))
+
+router.get(
+  "/search/:keySearch",
+  asyncHandler(postController.getListSearchPost)
+);
+router.get("/filter", asyncHandler(postController.filterPosts));
 
 // Owner
 router.use(verifyToken);

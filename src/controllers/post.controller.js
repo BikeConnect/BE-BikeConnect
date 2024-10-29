@@ -15,7 +15,7 @@ class PostController {
         ...req.body,
         ownerId: ownerId,
       };
-      
+
       postData.images = [];
 
       if (req.files) {
@@ -124,7 +124,30 @@ class PostController {
       message: "Get list getListSearchPost success!",
       metadata: await PostService.getListSearchPost(req.params),
     }).send(res);
-  }
+  };
+
+  filterPosts = async (req, res, next) => {
+    try {
+      const filterOptions = {
+        minPrice: req.query.minPrice,
+        maxPrice: req.query.maxPrice,
+        category: req.query.category,
+        brand: req.query.brand,
+        availability_status: req.query.availability_status,
+        rating: req.query.rating,
+        minRating: req.query.minRating,
+        maxRating: req.query.maxRating,
+        sortBy: req.query.sortBy,
+      };
+
+      new SuccessResponse({
+        message: "Filter posts success!",
+        metadata: await PostService.filterPosts(filterOptions),
+      }).send(res);
+    } catch (error) {
+      next(error);
+    }
+  };
 }
 
 module.exports = new PostController();

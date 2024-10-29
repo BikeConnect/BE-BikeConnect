@@ -19,8 +19,8 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 dbConnect();
 
-app.use("/api/post", postOwer);
 app.use("/api", authRoutes);
+app.use("/api/post", postOwer);
 app.use("/api", customerRoutes);
 
 app.use((req, res, next) => {

@@ -3,7 +3,10 @@
 const { post } = require("../models/postModel");
 const cloudinary = require("../configs/cloudinaryConfig");
 const { removeUndefinedObject, updateNestedObjectParser } = require("../utils");
-const { searchPostByCustomer, filterPosts } = require("../models/repositories/post.repo");
+const {
+  searchPostByCustomer,
+  filterPosts,
+} = require("../models/repositories/post.repo");
 
 // Owner
 class PostFactory {
@@ -79,10 +82,10 @@ class PostFactory {
     }
   }
 
-  static async getListSearchPost( {keySearch} ) {
-    return await searchPostByCustomer({keySearch})
+  static async getListSearchPost({ keySearch }) {
+    return await searchPostByCustomer({ keySearch });
   }
-
+  
   static async filterPosts(filterOptions) {
     try {
       return await filterPosts(filterOptions);

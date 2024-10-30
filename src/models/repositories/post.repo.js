@@ -1,17 +1,44 @@
+const ownerModel = require("../ownerModel");
 const { post } = require("../postModel");
 
 const searchPostByCustomer = async ({ keySearch }) => {
-  const regexSearch = new RegExp(keySearch);
-  const result = await post
-    .find(
-      {
-        $text: { $search: regexSearch },
-      },
-      { score: { $meta: "textScore" } }
-    )
-    .sort({ score: { $meta: "textScore" } })
-    .lean();
-  return result;
+  try {
+    if (!keySearch) {
+      return [];
+    }
+
+    const owners = await ownerModel
+      .find(
+        {
+          $text: { $search: keySearch },
+          isVerified: true,
+        },
+        { score: { $meta: "textScore" } }
+      )
+      .sort({ score: { $meta: "textScore" } })
+      .lean();
+
+    if (!owners || owners.length === 0) {
+      return [];
+    }
+
+    const ownerIds = owners.map(owner => owner._id);
+
+    const result = await post
+      .find({
+        ownerId: { $in: ownerIds },
+        availability_status: "available"
+      })
+      .populate({
+        path: "ownerId",
+        select: "name currentAddress phone"
+      })
+      .lean();
+
+    return result;
+  } catch (error) {
+    throw new Error(`Error searching posts by address: ${error.message}`);
+  }
 };
 
 const filterPosts = async (filterOptions) => {
@@ -34,9 +61,9 @@ const filterPosts = async (filterOptions) => {
     }
 
     if (filterOptions.brand) {
-      query.brand = { 
-        $regex: filterOptions.brand, 
-        $options: 'i' 
+      query.brand = {
+        $regex: filterOptions.brand,
+        $options: "i",
       };
     }
 
@@ -85,14 +112,12 @@ const filterPosts = async (filterOptions) => {
       sortOptions.price = 1;
     }
 
-    const posts = await post.find(query)
-      .sort(sortOptions)
-      .lean();
+    const posts = await post.find(query).sort(sortOptions).lean();
 
     if (!posts || posts.length === 0) {
       return {
         posts: [],
-        priceRange: null
+        priceRange: null,
       };
     }
 
@@ -101,17 +126,20 @@ const filterPosts = async (filterOptions) => {
         $group: {
           _id: null,
           minPrice: { $min: "$price" },
-          maxPrice: { $max: "$price" }
-        }
-      }
+          maxPrice: { $max: "$price" },
+        },
+      },
     ]);
 
     return {
       posts,
-      priceRange: priceStats.length > 0 ? {
-        minPrice: priceStats[0].minPrice,
-        maxPrice: priceStats[0].maxPrice
-      } : null
+      priceRange:
+        priceStats.length > 0
+          ? {
+              minPrice: priceStats[0].minPrice,
+              maxPrice: priceStats[0].maxPrice,
+            }
+          : null,
     };
   } catch (error) {
     throw new Error(`Error filtering posts: ${error.message}`);

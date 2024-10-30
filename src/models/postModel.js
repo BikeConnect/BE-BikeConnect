@@ -79,9 +79,6 @@ const postSchema = new Schema(
   }
 );
 
-// Create index for searchPost
-postSchema.index({ name: "text", description: "text" });
-
 // Create slug for post
 postSchema.pre("save", function (next) {
   this.product_slug = slugify(this.name, { lower: true });

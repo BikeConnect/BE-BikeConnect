@@ -21,7 +21,7 @@ const paymentSchema = new Schema(
     status: {
       type: String,
       default: "pending",
-    }
+    },
   },
   {
     timestamps: true,

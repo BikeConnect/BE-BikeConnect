@@ -1,16 +1,11 @@
 const { Schema, model } = require("mongoose");
 
-
-
 const bookingSchema = new Schema(
   {
     customerId: {
       type: Schema.ObjectId,
       required: true,
     },
-    postId: {
-      type: Schema.ObjectId,
-      ref: "Post",    
     vehicleId: {
       type: Schema.ObjectId,
       ref:"Post",

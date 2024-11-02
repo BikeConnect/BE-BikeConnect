@@ -52,6 +52,4 @@ const ownerSchema = new Schema(
   }
 );
 
-ownerSchema.index({ currentAddress: "text" });
-
-module.exports = model("Owner", ownerSchema);
+module.exports = model("owners", ownerSchema);

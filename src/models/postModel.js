@@ -72,6 +72,14 @@ const postSchema = new Schema(
       type: String,
       required: true,
     },
+    startDate: {
+      type: String,
+      required: true,
+    },
+    endDate: {
+      type: String,
+      required: true,
+    }
   },
   {
     collection: COLLECTION_NAME,

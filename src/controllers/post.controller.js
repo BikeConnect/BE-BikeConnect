@@ -4,11 +4,28 @@ const { SuccessResponse } = require("../core/success.response");
 const PostFactory = require("../services/post.service");
 const PostService = require("../services/post.service");
 const cloudinary = require("../configs/cloudinaryConfig");
+const { dateValidate } = require("../utils/validation");
 
 // Owner
 class PostController {
   createPost = async (req, res, next) => {
     try {
+      const { error } = dateValidate(req.body);
+      if (error) {
+        if (req.files && req.files.images) {
+          for (const file of req.files.images) {
+            await cloudinary.uploader.destroy(file.filename);
+          }
+        }
+        return res.status(400).json({
+          success: false,
+          errors: error.details.map(detail => ({
+            field: detail.path[0],
+            message: detail.message
+          }))
+        });
+      }
+      
       const ownerId = req.ownerId;
 
       let postData = {
@@ -53,6 +70,22 @@ class PostController {
     try {
       const ownerId = req.ownerId;
       const postId = req.params.postId;
+      const { error } = dateValidate(req.body);
+      
+      if (error) {
+        if (req.files && req.files.images) {
+          for (const file of req.files.images) {
+            await cloudinary.uploader.destroy(file.filename);
+          }
+        }
+        return res.status(400).json({
+          success: false,
+          errors: error.details.map(detail => ({
+            field: detail.path[0],
+            message: detail.message
+          }))
+        });
+      }
 
       const currentPost = await PostService.getPostById(postId);
       if (!currentPost) {

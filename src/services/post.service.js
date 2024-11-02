@@ -111,6 +111,8 @@ class Post {
     rating,
     availability_status,
     license,
+    startDate,
+    endDate,
   }) {
     this.ownerId = ownerId;
     this.name = name;
@@ -126,6 +128,8 @@ class Post {
     this.rating = rating;
     this.availability_status = availability_status;
     this.license = license;
+    this.startDate = startDate;
+    this.endDate = endDate;
   }
 
   async create() {

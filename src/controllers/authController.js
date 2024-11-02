@@ -58,13 +58,16 @@ const owner_register = async (req, res) => {
       const verificationToken = Math.floor(
         100000 + Math.random() * 900000
       ).toString();
+
       const owner = await ownerModel.create({
         name,
         email,
         password: await bcrypt.hash(password, 10),
+        shopInfo: {},
         verificationToken,
         verificationTokenExpiresAt: Date.now() + 24 * 60 * 60 * 1000,
       });
+
       await ownerCustomerModel.create({
         myId: owner.id,
       });
@@ -90,7 +93,6 @@ const owner_register = async (req, res) => {
 
 const owner_login = async (req, res) => {
   const { email, password } = req.body;
-
   try {
     if (!email || !password) {
       return responseReturn(res, 400, {

@@ -38,6 +38,10 @@ const ownerSchema = new Schema(
       type: Boolean,
       default: false,
     },
+    shopInfo: {
+      type: Object,
+      default: {},
+    },
     resetPasswordToken: String,
     resetPasswordExpiresAt: Date,
     verificationToken: String,

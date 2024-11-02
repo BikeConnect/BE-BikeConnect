@@ -160,11 +160,11 @@ const owner_logout = async (req, res) => {
   return responseReturn(res, 200, { message: "Logout Successfully" });
 };
 
-const asyncHandler = fn => {
+const asyncHandler = (fn) => {
   return (req, res, next) => {
-    fn(req, res, next).catch(next)
-  }
-}
+    fn(req, res, next).catch(next);
+  };
+};
 
 const owner_verify_email = async (req, res) => {
   const { code } = req.body;
@@ -319,7 +319,8 @@ const owner_reset_password = async (req, res) => {
 };
 
 const verifyToken = asyncHandler(async (req, res, next) => {
-  const token = req.cookies.accessToken || req.headers.authorization?.split(' ')[1];
+  const token =
+    req.cookies.accessToken || req.headers.authorization?.split(" ")[1];
 
   if (!token) {
     return responseReturn(res, 401, { error: "No token provided" });

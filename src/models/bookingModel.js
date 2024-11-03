@@ -1,7 +1,5 @@
 const { Schema, model } = require("mongoose");
 
-
-
 const bookingSchema = new Schema(
   {
     customerId: {
@@ -10,10 +8,12 @@ const bookingSchema = new Schema(
     },
     postId: {
       type: Schema.ObjectId,
-      ref: "Post",    
+      ref: "Post",
+      required: true,
+    },
     vehicleId: {
       type: Schema.ObjectId,
-      ref:"Post",
+      ref: "Post",
       required: true,
     },
     status: {
@@ -29,6 +29,7 @@ const bookingSchema = new Schema(
       required: true,
     },
   },
+
   {
     timestamps: true,
   }

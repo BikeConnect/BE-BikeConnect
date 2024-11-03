@@ -1,5 +1,5 @@
 const bookingModel = require("../../models/bookingModel");
-const {post} = require("../../models/postModel");
+const { post } = require("../../models/postModel");
 const { responseReturn } = require("../../utils/response");
 
 const create_booking = async (req, res) => {
@@ -37,25 +37,32 @@ const create_booking = async (req, res) => {
 };
 
 const get_bookings = async (req, res) => {
-    const { startDate, endDate } = req.query; // Nhận ngày từ query parameters
+  const { startDate, endDate } = req.query; // Nhận ngày từ query parameters
+  if (new Date(startDate) > new Date(endDate)) {
+    return res
+      .status(400)
+      .json({ error: "Start date cannot be greater than end date." });
+  }
 
   try {
-    const bookings = await bookingModel.find({
-      $or: [
-        {
-          $and: [
-            { startDate: { $lte: startDate } },
-            { endDate: { $gte: startDate } },
-          ],
-        },
-        {
-          $and: [
-            { startDate: { $lte: endDate } },
-            { endDate: { $gte: endDate } },
-          ],
-        },
-      ],
-    }).select("vehicleId");
+    const bookings = await bookingModel
+      .find({
+        $or: [
+          {
+            $and: [
+              { startDate: { $lte: startDate } },
+              { endDate: { $gte: startDate } },
+            ],
+          },
+          {
+            $and: [
+              { startDate: { $lte: endDate } },
+              { endDate: { $gte: endDate } },
+            ],
+          },
+        ],
+      })
+      .select("vehicleId");
 
     const vehicleIds = bookings.map((booking) => booking.vehicleId);
 

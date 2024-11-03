@@ -24,6 +24,10 @@ router.post(
 );
 
 router.post("/customer/customer-verify-email", customerController.customer_verify_email);
+
+router.post("/customer/forgot-password", customerController.customer_forgot_password);
+router.post("/customer/reset-password/:token", customerController.customer_reset_password);
+
 router.post("/home/customer/submit-review", homeController.customer_submit_review);
 router.get("/home/customer/get-reviews/:postId", homeController.get_reviews);
 router.get("/home/find-booking",bookingController.get_bookings);

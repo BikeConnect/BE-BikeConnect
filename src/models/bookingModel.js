@@ -21,11 +21,11 @@ const bookingSchema = new Schema(
       default: "pending",
     },
     startDate: {
-      type: String,
+      type: Date,
       required: true,
     },
     endDate: {
-      type: String,
+      type: Date,
       required: true,
     },
   },

@@ -1,7 +1,6 @@
 const { responseReturn } = require("../utils/response");
 const jwt = require("jsonwebtoken");
 module.exports.verifyToken = (req, res, next) => {
-
   const accessToken =
     req.cookies.accessToken ||
     (req.headers.authorization && req.headers.authorization.split(" ")[1]);

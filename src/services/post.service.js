@@ -7,12 +7,27 @@ const {
   searchPostByCustomer,
   filterPosts,
 } = require("../models/repositories/post.repo");
+const { pushNotification } = require("./notification.service");
 
 // Owner
 class PostFactory {
   static async createPost(payload) {
     try {
       const newPost = await post.create(payload);
+      pushNotification({
+        type: "booking",
+        receiverId: 1,
+        senderType: "Owner",
+        senderId: payload.ownerId,
+        options: {
+          name: newPost.name,
+          post_price: newPost.price,
+          post_image: (payload.images && payload.images.length > 0) ? payload.images[0].url : null,
+        },
+        relatedPostId: req.body.postId,
+      })
+        .then((rs) => console.log(rs))
+        .catch(console.error);
       return newPost;
     } catch (error) {
       throw new Error(`Invalid Post Type: ${error.message}`);
@@ -85,7 +100,7 @@ class PostFactory {
   static async getListSearchPost({ keySearch }) {
     return await searchPostByCustomer({ keySearch });
   }
-  
+
   static async filterPosts(filterOptions) {
     try {
       return await filterPosts(filterOptions);

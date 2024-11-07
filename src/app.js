@@ -20,6 +20,7 @@ app.use(cookieParser());
 dbConnect();
 
 app.use("/api/post", postOwer);
+app.use("/api/notification", require("./routes/notification"));
 app.use("/api", authRoutes);
 app.use("/api", customerRoutes);
 

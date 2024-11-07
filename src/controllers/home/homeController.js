@@ -1,8 +1,9 @@
 const reviewModel = require("../../models/reviewModel");
-const {post} = require("../../models/postModel");
+const { post } = require("../../models/postModel");
 const { responseReturn } = require("../../utils/response");
 const moment = require("moment");
 const mongoose = require("mongoose");
+const { pushNotification } = require("../../services/notification.service");
 
 const customer_submit_review = async (req, res) => {
   const { postId, rating, review, name } = req.body;
@@ -27,6 +28,22 @@ const customer_submit_review = async (req, res) => {
     await post.findByIdAndUpdate(postId, {
       rating: postRating,
     });
+
+    console.log(req.body);
+    pushNotification({
+      type: "review",
+      receiverId: 1,
+      senderType: "customers",
+      senderId: postId,
+      link: postId,
+      options: {
+        review_rating: req.body.rating,
+        review_name: req.body.name,
+        review_content: req.body.review
+      },
+    })
+      .then((rs) => console.log(rs))
+      .catch(console.error);
     responseReturn(res, 201, { message: "Review Added Successfully" });
   } catch (error) {
     console.log(error.message);
@@ -43,7 +60,7 @@ const get_reviews = async (req, res) => {
     let getRating = await reviewModel.aggregate([
       {
         $match: {
-            postId: {
+          postId: {
             $eq: mongoose.Types.ObjectId.createFromHexString(postId),
           },
           rating: {

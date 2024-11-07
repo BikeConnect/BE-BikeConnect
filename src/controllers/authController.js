@@ -281,7 +281,7 @@ const owner_forgot_password = async (req, res) => {
     await sendPasswordResetEmail(
       owner.email,
       `${process.env.CLIENT_URL}/owner-reset-password/${resetToken}`
-    ); //tham so thu 2 la link reset password 'http://localhost:3000/reset-password/${resetToken}'
+    ); //tham so thu 2 la link reset password 'http://localhost:3000/owner-reset-password/${resetToken}'
     responseReturn(res, 200, {
       message: "Password reset link sent to your email!",
     });
@@ -335,6 +335,29 @@ const verifyToken = asyncHandler(async (req, res, next) => {
   }
 });
 
+const add_owner_profile = async (req, res) => {
+  const { shopName, address, district, city } = req.body;
+  console.log({ shopName, address, district, city });
+  const { id } = req;
+  console.log(id);
+  // console.log(req);
+  try {
+    await ownerModel.findByIdAndUpdate(id, {
+      shopInfo: {
+        shopName,
+        district,
+        city,
+        address,
+      },
+    });
+    const userInfo = await ownerModel.findById(id);
+    responseReturn(res, 201, { userInfo, message: "Add Profile Successfully" });
+  } catch (error) {
+    console.log(error.message);
+    responseReturn(res, 500, { error: error.message });
+  }
+};
+
 module.exports = {
   admin_login,
   owner_register,
@@ -346,4 +369,5 @@ module.exports = {
   owner_reset_password,
   asyncHandler,
   verifyToken,
+  add_owner_profile,
 };

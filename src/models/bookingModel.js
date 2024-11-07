@@ -11,7 +11,7 @@ const bookingSchema = new Schema(
     postId: {
       type: Schema.ObjectId,
       ref: "Post",    
-    }, 
+    },
     vehicleId: {
       type: Schema.ObjectId,
       ref:"Post",

@@ -1,17 +1,19 @@
+const customerModel = require("../../models/customerModel");
+const ownerCustomerModel = require("../../models/message/ownerCustomerModel");
+const userRefreshTokenModel = require("../../models/userRefreshTokenModel");
+const bookingModel = require("../../models/bookingModel");
+const { createToken } = require("../../utils/createToken");
+const { responseReturn } = require("../../utils/response");
+const { userValidate } = require("../../utils/validation");
+const bcrypt = require("bcrypt");
+const crypto = require("node:crypto");
 const {
   sendVerificationEmail,
   sendWelcomeEmail,
   sendPasswordResetEmail,
   sendResetSuccessEmail,
 } = require("../../sendmail/email");
-const customerModel = require("../../models/customerModel");
-const ownerCustomerModel = require("../../models/message/ownerCustomerModel");
-const userRefreshTokenModel = require("../../models/userRefreshTokenModel");
-const { createToken } = require("../../utils/createToken");
-const { responseReturn } = require("../../utils/response");
-const { userValidate } = require("../../utils/validation");
-const bcrypt = require("bcrypt");
-const crypto = require("node:crypto");
+const { post } = require("../../models/postModel");
 
 const customer_register = async (req, res) => {
   const { email, name, password } = req.body;
@@ -211,6 +213,28 @@ const customer_reset_password = async (req, res) => {
   }
 };
 
+const customer_send_request = async (req, res) => {
+  const { customerId, postId, startDate, endDate } = req.body;
+  try {
+    const bookingRequest = await bookingModel.create({
+      customerId,
+      postId,
+      startDate,
+      endDate,
+      status: "pending",
+    });
+    responseReturn(res, 201, {
+      bookingRequest,
+      message: "Send Booking Request Successfully",
+    });
+  } catch (error) {
+    console.log(error.message);
+    responseReturn(res, 500, { error: error.message });
+  }
+};
+
+
+
 module.exports = {
   customer_register,
   customer_login,
@@ -218,4 +242,5 @@ module.exports = {
   customer_verify_email,
   customer_forgot_password,
   customer_reset_password,
+  customer_send_request,
 };

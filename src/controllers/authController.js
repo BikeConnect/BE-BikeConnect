@@ -335,28 +335,8 @@ const verifyToken = asyncHandler(async (req, res, next) => {
   }
 });
 
-const add_owner_profile = async (req, res) => {
-  const { shopName, address, district, city } = req.body;
-  console.log({ shopName, address, district, city });
-  const { id } = req;
-  console.log(id);
-  // console.log(req);
-  try {
-    await ownerModel.findByIdAndUpdate(id, {
-      shopInfo: {
-        shopName,
-        district,
-        city,
-        address,
-      },
-    });
-    const userInfo = await ownerModel.findById(id);
-    responseReturn(res, 201, { userInfo, message: "Add Profile Successfully" });
-  } catch (error) {
-    console.log(error.message);
-    responseReturn(res, 500, { error: error.message });
-  }
-};
+
+
 
 module.exports = {
   admin_login,
@@ -369,5 +349,4 @@ module.exports = {
   owner_reset_password,
   asyncHandler,
   verifyToken,
-  add_owner_profile,
 };

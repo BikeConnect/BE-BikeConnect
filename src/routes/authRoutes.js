@@ -16,7 +16,6 @@ router.post("/auth/owner-verify-email", authController.owner_verify_email);
 router.post("/auth/owner-forgot-password",authController.owner_forgot_password);
 router.post("/auth/owner-reset-password/:token",authController.owner_reset_password);
 
-router.post("/add-profile-info",verifyToken,authController.add_owner_profile);
 
 // router.get("/getList",checkAuth, (req, res, next) => {
 //       // console.log(req.headers);

@@ -11,14 +11,10 @@ const bookingSchema = new Schema(
       ref: "Post",
       required: true,
     },
-    vehicleId: {
-      type: Schema.ObjectId,
-      ref: "Post",
-      required: true,
-    },
     status: {
       type: String,
       default: "pending",
+      enum: ["pending", "accepted", "rejected"],
     },
     startDate: {
       type: Date,

@@ -1,45 +1,13 @@
 const bookingModel = require("../../models/bookingModel");
 const { post } = require("../../models/postModel");
+const { formatPostDates } = require("../../utils/formatPostDates");
 const { responseReturn } = require("../../utils/response");
-
-const create_booking = async (req, res) => {
-  const { startDate, endDate } = req.body;
-  try {
-    const bookings = await bookingModel
-      .find({
-        $or: [
-          {
-            $and: [
-              { startDate: { $lte: startDate } },
-              { endDate: { $gte: startDate } },
-            ],
-          },
-          {
-            $and: [
-              { startDate: { $lte: endDate } },
-              { endDate: { $gte: endDate } },
-            ],
-          },
-        ],
-      })
-      .select("vehicleId");
-    const vehicleIds = bookings.map((booking) => booking.vehicleId);
-
-    const availableVehicles = await post.find({
-      _id: { $nin: vehicleIds },
-      availability_status: "available",
-    });
-    res.status(200).json({ availableVehicles });
-  } catch (error) {
-    console.log(error.message);
-    responseReturn(res, 500, { error: error.message });
-  }
-};
+const moment = require("moment");
 
 const get_bookings = async (req, res) => {
   const { startDate, endDate } = req.query;
-  const start = new Date(startDate);
-  const end = new Date(endDate);
+  const start = moment(startDate, "DD/MM/YYYY").toDate();
+  const end = moment(endDate, "DD/MM/YYYY").toDate();
 
   if (start > end) {
     return responseReturn(res, 400, {
@@ -47,29 +15,57 @@ const get_bookings = async (req, res) => {
     });
   }
   try {
-    const bookings = await bookingModel
+    const availableVehicles = await post
       .find({
-        $or: [{ startDate: { $lte: end }, endDate: { $gte: start } }],
+        availability_status: "available",
+        startDate: { $lte: start },
+        endDate: { $gte: end },
       })
-      .select("vehicleId");
+      .select("-createdAt -updatedAt -__v");
 
-    const vehicleIds = bookings.map((booking) => booking.vehicleId);
+    const formattedVehicles = availableVehicles.map((vehicle) =>
+      formatPostDates(vehicle)
+    );
 
-    const availableVehicles = await post.find({
-      _id: { $nin: vehicleIds },
-      availability_status: "available",
-      startDate: { $lte: start },
-      endDate: { $gte: end },
-    });
-
-    res.status(200).json({ availableVehicles });
+    res.status(200).json({ availableVehicles: formattedVehicles });
   } catch (error) {
     console.log(error.message);
-    res.status(500).json({ error: error.message });
+    responseReturn(res, 500, { error: error.message });
+  }
+};
+
+const check_specific_booking = async (req, res) => {
+  const { postId } = req.params;
+  try {
+    const specificBooking = await post
+      .findById(postId)
+      .select("availableDates availability_status");
+    if (!specificBooking) {
+      return responseReturn(res, 404, { error: "Booking not found" });
+    }
+
+    if (specificBooking.availability_status === "rented") {
+      return responseReturn(res, 400, {
+        message:
+          "Vehicle is rented, please wait till the vehicle is available or choose another vehicle",
+      });
+    }
+
+    const formattedBooking = {
+      ...specificBooking._doc,
+      availableDates: specificBooking.availableDates.map((date) =>
+        moment(date).format("DD/MM/YYYY")
+      ),
+    };
+
+    responseReturn(res, 200, { specificBooking: formattedBooking });
+  } catch (error) {
+    console.log(error.message);
+    responseReturn(res, 500, { error: error.message });
   }
 };
 
 module.exports = {
-  create_booking,
   get_bookings,
+  check_specific_booking,
 };

@@ -7,13 +7,27 @@ const {
   searchPostByCustomer,
   filterPosts,
 } = require("../models/repositories/post.repo");
+const moment = require("moment");
 
 // Owner
 class PostFactory {
   static async createPost(payload) {
     try {
+      payload.availableDates = payload.availableDates.filter(
+        (date) => date >= payload.startDate && date <= payload.endDate
+      );
       const newPost = await post.create(payload);
-      return newPost;
+
+      const formatDates = {
+        ...newPost._doc,
+        startDate: moment(newPost.startDate).format("DD/MM/YYYY"),
+        endDate: moment(newPost.endDate).format("DD/MM/YYYY"),
+        availableDates: newPost.availableDates.map((date) =>
+          moment(date).format("DD/MM/YYYY")
+        ),
+      };
+      
+      return formatDates;
     } catch (error) {
       throw new Error(`Invalid Post Type: ${error.message}`);
     }
@@ -85,7 +99,7 @@ class PostFactory {
   static async getListSearchPost({ keySearch }) {
     return await searchPostByCustomer({ keySearch });
   }
-  
+
   static async filterPosts(filterOptions) {
     try {
       return await filterPosts(filterOptions);
@@ -113,6 +127,7 @@ class Post {
     license,
     startDate,
     endDate,
+    availableDates,
   }) {
     this.ownerId = ownerId;
     this.name = name;
@@ -130,6 +145,7 @@ class Post {
     this.license = license;
     this.startDate = startDate;
     this.endDate = endDate;
+    this.availableDates = [];
   }
 
   async create() {

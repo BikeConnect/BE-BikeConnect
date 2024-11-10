@@ -1,6 +1,5 @@
 const { asyncHandler } = require("../../controllers/authController");
 const customerController = require("../../controllers/home/customerController");
-const postController = require("../../controllers/post.controller");
 
 const homeController = require("../../controllers/home/homeController");
 const bookingController = require("../../controllers/home/bookingController");
@@ -42,5 +41,8 @@ router.post(
 );
 router.get("/home/customer/get-reviews/:postId", homeController.get_reviews);
 router.get("/home/find-booking", bookingController.get_bookings);
+router.get("/home/check-booking/:postId", bookingController.check_specific_booking);
+router.post("/home/send-booking-request", customerController.customer_send_request);
+
 
 module.exports = router;

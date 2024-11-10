@@ -79,7 +79,13 @@ const postSchema = new Schema(
     endDate: {
       type: Date,
       required: true,
-    }
+    },
+    availableDates: [
+      {
+        type: Date,
+        required: true, 
+      },
+    ],
   },
   {
     collection: COLLECTION_NAME,

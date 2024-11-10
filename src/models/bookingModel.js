@@ -8,7 +8,7 @@ const bookingSchema = new Schema(
     },
     postId: {
       type: Schema.ObjectId,
-      ref: "Post",
+      ref: "Post",    
       required: true,
     },
     status: {

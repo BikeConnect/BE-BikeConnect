@@ -23,7 +23,6 @@ const dateValidate = (data) => {
         const startDate = new Date(value);
         startDate.setHours(0, 0, 0, 0);
 
-        console.log(startDate, today);
         if (startDate < today) {
           return helpers.error('date.startDate.past');
         }

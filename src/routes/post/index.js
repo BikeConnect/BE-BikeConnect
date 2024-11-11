@@ -1,12 +1,11 @@
 "use strict";
 
 const express = require("express");
-const postController = require("../../controllers/post.controller");
 const router = express.Router();
 const { asyncHandler } = require("../../controllers/authController");
 const { verifyToken } = require("../../middlewares/verifyToken");
 const { handleImageUpload } = require("../../middlewares/multerHandler");
-
+const postController = require("../../controllers/post.controller");
 
 router.get(
   "/search/:keySearch",
@@ -16,11 +15,7 @@ router.get("/filter", asyncHandler(postController.filterPosts));
 
 // Owner
 router.use(verifyToken);
-router.post(
-  "",
-  handleImageUpload,
-  asyncHandler(postController.createPost)
-);
+router.post("", handleImageUpload, asyncHandler(postController.createPost));
 router.patch(
   "/:postId",
   handleImageUpload,

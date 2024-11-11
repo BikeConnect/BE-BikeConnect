@@ -30,10 +30,6 @@ const ownerSchema = new Schema(
       type: String,
       default: "pending",
     },
-    currentAddress: {
-      type: String,
-      default: "",
-    },
     isVerified: {
       type: Boolean,
       default: false,

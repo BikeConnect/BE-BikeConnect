@@ -281,7 +281,7 @@ const owner_forgot_password = async (req, res) => {
     await sendPasswordResetEmail(
       owner.email,
       `${process.env.CLIENT_URL}/owner-reset-password/${resetToken}`
-    ); //tham so thu 2 la link reset password 'http://localhost:3000/reset-password/${resetToken}'
+    ); //tham so thu 2 la link reset password 'http://localhost:3000/owner-reset-password/${resetToken}'
     responseReturn(res, 200, {
       message: "Password reset link sent to your email!",
     });
@@ -334,6 +334,9 @@ const verifyToken = asyncHandler(async (req, res, next) => {
     return responseReturn(res, 401, { error: "Invalid token" });
   }
 });
+
+
+
 
 module.exports = {
   admin_login,

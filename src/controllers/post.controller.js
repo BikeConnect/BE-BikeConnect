@@ -1,7 +1,7 @@
 "use strict";
 
 const { SuccessResponse } = require("../core/success.response");
-const PostFactory = require("../services/post.service");
+// const PostFactory = require("../services/post.service");
 const PostService = require("../services/post.service");
 const cloudinary = require("../configs/cloudinaryConfig");
 const { dateValidate } = require("../utils/validation");

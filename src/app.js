@@ -11,6 +11,7 @@ const authRoutes = require("./routes/authRoutes");
 const customerRoutes = require("./routes/home/customerRoutes");
 const postOwer = require("./routes/post");
 const portal = require("./routes/portal");
+const ownerRoutes = require("./routes/ownerRoutes");
 
 app.use(morgan("dev"));
 app.use(compression());
@@ -22,6 +23,7 @@ dbConnect();
 
 app.use("/api/post", postOwer);
 app.use("/api", authRoutes);
+app.use("/api",ownerRoutes);
 app.use("/api", customerRoutes);
 app.use("/api", portal);
 

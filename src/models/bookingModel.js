@@ -1,7 +1,5 @@
 const { Schema, model } = require("mongoose");
 
-
-
 const bookingSchema = new Schema(
   {
     customerId: {
@@ -21,16 +19,18 @@ const bookingSchema = new Schema(
     status: {
       type: String,
       default: "pending",
+      enum: ["pending", "accepted", "rejected"],
     },
     startDate: {
-      type: String,
+      type: Date,
       required: true,
     },
     endDate: {
-      type: String,
+      type: Date,
       required: true,
     },
   },
+
   {
     timestamps: true,
   }

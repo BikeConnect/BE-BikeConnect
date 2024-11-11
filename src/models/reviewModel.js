@@ -6,16 +6,6 @@ const reviewSchema = new Schema(
       type: Schema.ObjectId,
       required: true,
     },
-    ownerId: {
-      type: Schema.ObjectId,
-      ref: "Owner",
-      required: true,
-    },
-    customerId: {
-      type: Schema.ObjectId,
-      ref: "customers",
-      required: true,
-    },
     name: {
       type: String,
       required: true,

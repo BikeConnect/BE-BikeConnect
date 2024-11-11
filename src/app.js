@@ -10,6 +10,7 @@ require("dotenv").config();
 const authRoutes = require("./routes/authRoutes");
 const customerRoutes = require("./routes/home/customerRoutes");
 const postOwer = require("./routes/post");
+const portal = require("./routes/portal");
 
 app.use(morgan("dev"));
 app.use(compression());
@@ -20,9 +21,9 @@ app.use(cookieParser());
 dbConnect();
 
 app.use("/api/post", postOwer);
-app.use("/api/notification", require("./routes/notification"));
 app.use("/api", authRoutes);
 app.use("/api", customerRoutes);
+app.use("/api", portal);
 
 app.use((req, res, next) => {
   const error = new Error("Not Found");

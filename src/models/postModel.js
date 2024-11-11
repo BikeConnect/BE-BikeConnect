@@ -93,6 +93,5 @@ postSchema.pre("save", function (next) {
   next();
 });
 
-module.exports = {
-  post: model(DOCUMENT_NAME, postSchema),
-};
+const post = model(DOCUMENT_NAME, postSchema);
+module.exports = post; 

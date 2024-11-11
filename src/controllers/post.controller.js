@@ -5,6 +5,8 @@ const PostFactory = require("../services/post.service");
 const PostService = require("../services/post.service");
 const cloudinary = require("../configs/cloudinaryConfig");
 const { dateValidate } = require("../utils/validation");
+const { calculateDistance } = require("../services/location.service");
+const postModel = require("../models/postModel"); 
 
 // Owner
 class PostController {
@@ -159,6 +161,37 @@ class PostController {
     }).send(res);
   };
 
+  getPostsSortedByDistance = async (req, res, next) => {
+    const { address } = req.query;
+
+    if (!address) {
+      return res.status(400).json({ message: "Address is required" });
+    }
+
+    try {
+      const posts = await postModel.find().populate('ownerId');
+
+      const distances = await Promise.all(posts.map(async (post) => {
+        const ownerAddress = post.ownerId.currentAddress;
+        const distance = await calculateDistance(address, ownerAddress);
+        return { post, distance };
+      }));
+
+      distances.sort((a, b) => a.distance.value - b.distance.value);
+
+      res.json({
+        message: "Posts sorted by distance",
+        posts: distances.map(item => ({
+          post: item.post,
+          distance: item.distance
+        }))
+      });
+    } catch (error) {
+      console.error("Error fetching posts sorted by distance:", error.message);
+      return next(error);
+    }
+  };
+
   filterPosts = async (req, res, next) => {
     try {
       const filterOptions = {
@@ -181,6 +214,8 @@ class PostController {
       next(error);
     }
   };
+
+  getDistance
 }
 
 module.exports = new PostController();

@@ -14,7 +14,6 @@ const bookingSchema = new Schema(
     vehicleId: {
       type: Schema.ObjectId,
       ref:"Post",
-      required: true,
     },
     status: {
       type: String,

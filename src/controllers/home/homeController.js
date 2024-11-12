@@ -1,12 +1,14 @@
 const reviewModel = require("../../models/reviewModel");
-const { post } = require("../../models/postModel");
+const post = require("../../models/postModel");
 const { responseReturn } = require("../../utils/response");
 const moment = require("moment");
 const mongoose = require("mongoose");
 const { pushNotification } = require("../../services/notification.service");
 
+
+
 const customer_submit_review = async (req, res) => {
-  const { postId, rating, review, name, ownerId, customerId } = req.body;
+  const { postId, rating, review, name, customerId, ownerId } = req.body;
   try {
     await reviewModel.create({
       postId,
@@ -14,8 +16,6 @@ const customer_submit_review = async (req, res) => {
       rating,
       review,
       date: moment(Date.now()).format("LL"),
-      customerId, 
-      ownerId, 
     });
 
     let ratings = 0;
@@ -31,9 +31,16 @@ const customer_submit_review = async (req, res) => {
       rating: postRating,
     });
 
-    let senderType = "Owner";
-    const senderId =
-      senderType === "customers" ? req.body.customerId : req.body.ownerId;
+    let senderType;
+    let senderId;
+
+    if (customerId) {
+      senderType = "customers";
+      senderId = customerId; 
+    } else if (ownerId) {
+      senderType = "Owner";
+      senderId = ownerId; 
+    }
 
     pushNotification({
       type: "review",
@@ -42,12 +49,12 @@ const customer_submit_review = async (req, res) => {
       senderId: senderId,
       link: postId,
       options: {
-        review_rating: req.body.rating,
-        review_name: req.body.name,
-        review_content: req.body.review,
+        review_rating: rating,
+        review_name: name,
+        review_content: review,
       },
     })
-      // .then((rs) => console.log(rs))
+      .then((rs) => console.log(rs))
       .catch(console.error);
     responseReturn(res, 201, { message: "Review Added Successfully" });
   } catch (error) {

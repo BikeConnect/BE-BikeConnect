@@ -13,7 +13,8 @@ const {
   sendPasswordResetEmail,
   sendResetSuccessEmail,
 } = require("../../sendmail/email");
-const { post } = require("../../models/postModel");
+const post = require("../../models/postModel");
+const { pushNotification } = require("../../services/notification.service");
 
 const customer_register = async (req, res) => {
   const { email, name, password } = req.body;
@@ -216,6 +217,12 @@ const customer_reset_password = async (req, res) => {
 const customer_send_request = async (req, res) => {
   const { customerId, postId, startDate, endDate } = req.body;
   try {
+    const postDetails = await post.findById(postId);
+    if (!postDetails) {
+      return responseReturn(res, 404, { error: "Post not found" });
+    }
+    const ownerId = postDetails.ownerId;
+
     const bookingRequest = await bookingModel.create({
       customerId,
       postId,
@@ -223,6 +230,22 @@ const customer_send_request = async (req, res) => {
       endDate,
       status: "pending",
     });
+
+    pushNotification({
+      type: "booking",
+      receiverId: 1,
+      senderType: "customers",
+      senderId: customerId,
+      link: postId,
+      options: {
+        booking_name: postDetails.name,
+        booking_description: postDetails.description,
+        booking_startDate: bookingRequest.createdAt,
+      },
+    })
+      .then((rs) => console.log(rs))
+      .catch(console.error);
+
     responseReturn(res, 201, {
       bookingRequest,
       message: "Send Booking Request Successfully",
@@ -232,8 +255,6 @@ const customer_send_request = async (req, res) => {
     responseReturn(res, 500, { error: error.message });
   }
 };
-
-
 
 module.exports = {
   customer_register,

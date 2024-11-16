@@ -1,3 +1,5 @@
+'use strict';
+
 const adminModel = require("../models/adminModel");
 const ownerModel = require("../models/ownerModel");
 const ownerCustomerModel = require("../models/message/ownerCustomerModel");
@@ -118,6 +120,7 @@ const owner_login = async (req, res) => {
         const token = await createToken({
           id: existingUser._id,
           email: existingUser.email,
+          role: existingUser.role,
         });
         const accessToken = token.accessToken;
         const refreshToken = token.refreshToken;

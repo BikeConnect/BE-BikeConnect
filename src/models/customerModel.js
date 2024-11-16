@@ -22,10 +22,12 @@ const customerSchema = new Schema(
       type: String,
       default: "",
     },
-    // role: {
-    //   type: String,
-    //   required: true,
-    // },
+    role: {
+      type: String,
+      default: "customer",
+      enum: ["customer"],
+      index: true,
+    },
     isVerified: {
       type: Boolean,
       default: false,

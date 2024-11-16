@@ -1,5 +1,6 @@
+"use strict";
+
 const ownerController = require("../controllers/ownerController");
-const { checkAuthOwner } = require("../middlewares/checkAuth");
 const { verifyToken } = require("../middlewares/verifyToken");
 const router = require("express").Router();
 

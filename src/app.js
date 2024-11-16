@@ -12,6 +12,8 @@ const customerRoutes = require("./routes/home/customerRoutes");
 const postOwer = require("./routes/post");
 const portal = require("./routes/portal");
 const ownerRoutes = require("./routes/ownerRoutes");
+const contractRoutes = require("./routes/home/contractRoutes");
+const reviewRoutes = require("./routes/home/reviewRoutes");
 
 app.use(morgan("dev"));
 app.use(compression());
@@ -25,6 +27,8 @@ app.use("/api/post", postOwer);
 app.use("/api", authRoutes);
 app.use("/api",ownerRoutes);
 app.use("/api", customerRoutes);
+app.use("/api", reviewRoutes);
+app.use("/api", contractRoutes);
 app.use("/api", portal);
 
 app.use((req, res, next) => {

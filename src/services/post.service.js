@@ -1,6 +1,6 @@
 "use strict";
 
-const { post } = require("../models/postModel");
+const post = require("../models/postModel");
 const cloudinary = require("../configs/cloudinaryConfig");
 const { removeUndefinedObject, updateNestedObjectParser } = require("../utils");
 const {
@@ -14,21 +14,21 @@ const { pushNotification } = require("./notification.service");
 class PostFactory {
   static async createPost(payload) {
     try {
-      payload.availableDates = payload.availableDates.filter(
-        (date) => date >= payload.startDate && date <= payload.endDate
-      );
+      // payload.availableDates = payload.availableDates.filter(
+      //   (date) => date >= payload.startDate && date <= payload.endDate
+      // );
       const newPost = await post.create(payload);
 
-      const formatDates = {
-        ...newPost._doc,
-        startDate: moment(newPost.startDate).format("DD/MM/YYYY"),
-        endDate: moment(newPost.endDate).format("DD/MM/YYYY"),
-        availableDates: newPost.availableDates.map((date) =>
-          moment(date).format("DD/MM/YYYY")
-        ),
-      };
-      
-      return formatDates;
+      // const formatDates = {
+      //   ...newPost._doc,
+      //   startDate: moment(newPost.startDate).format("DD/MM/YYYY"),
+      //   endDate: moment(newPost.endDate).format("DD/MM/YYYY"),
+      //   availableDates: newPost.availableDates.map((date) =>
+      //     moment(date).format("DD/MM/YYYY")
+      //   ),
+      // };
+
+      return newPost;
     } catch (error) {
       throw new Error(`Invalid Post Type: ${error.message}`);
     }
@@ -100,7 +100,6 @@ class PostFactory {
   static async getListSearchPost({ keySearch }) {
     return await searchPostByCustomer({ keySearch });
   }
-
 
   static async filterPosts(filterOptions) {
     try {

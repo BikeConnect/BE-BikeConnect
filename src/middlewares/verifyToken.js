@@ -6,6 +6,7 @@ module.exports.verifyToken = (req, res, next) => {
     (req.headers.authorization && req.headers.authorization.split(" ")[1]);
 
   if (!accessToken) {
+    console.log("accessToken::::", accessToken);
     return res.status(401).json({ message: "You are not authenticated" });
   } else {
     try {
@@ -13,12 +14,14 @@ module.exports.verifyToken = (req, res, next) => {
         accessToken,
         process.env.SECRET_ACCESS_TOKEN
       );
-
+      console.log("decodeAccessToken::::", decodeAccessToken);
       const ownerId = decodeAccessToken.id;
       req.ownerId = ownerId;
 
       req.accessToken = { value: accessToken, exp: decodeAccessToken.exp };
       req.id = decodeAccessToken.id;
+      req.role = decodeAccessToken.role;
+      console.log("req.role::::", req.role);
       next();
     } catch (error) {
       if (error instanceof jwt.TokenExpiredError) {

@@ -1,3 +1,5 @@
+'use strict';
+
 const customerModel = require("../../models/customerModel");
 const ownerCustomerModel = require("../../models/message/ownerCustomerModel");
 const userRefreshTokenModel = require("../../models/userRefreshTokenModel");
@@ -13,7 +15,6 @@ const {
   sendPasswordResetEmail,
   sendResetSuccessEmail,
 } = require("../../sendmail/email");
-const { post } = require("../../models/postModel");
 
 const customer_register = async (req, res) => {
   const { email, name, password } = req.body;
@@ -29,13 +30,16 @@ const customer_register = async (req, res) => {
       const verificationToken = Math.floor(
         100000 + Math.random() * 900000
       ).toString();
+
       const customer = await customerModel.create({
         name: name.trim(),
         email: email.trim(),
         password: await bcrypt.hash(password, 10),
+        role: "customer",
         verificationToken,
         verificationTokenExpiresAt: Date.now() + 24 * 60 * 60 * 1000,
       });
+
       await ownerCustomerModel.create({
         myId: customer.id,
       });
@@ -43,8 +47,9 @@ const customer_register = async (req, res) => {
         id: customer.id,
         name: customer.name,
         email: customer.email,
+        role: customer.role,
       });
-      res.cookie("customerToken", accessToken, {
+      res.cookie("accessToken", accessToken, {
         expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       });
       await sendVerificationEmail(customer.email, verificationToken);
@@ -72,7 +77,7 @@ const customer_login = async (req, res) => {
 
     const existingUser = await customerModel
       .findOne({ email })
-      .select("+password");
+      .select("+password +role");
     if (!existingUser) {
       return responseReturn(res, 401, { message: "Invalid email or password" });
     }
@@ -84,17 +89,21 @@ const customer_login = async (req, res) => {
     if (existingUser) {
       const match = await bcrypt.compare(password, existingUser.password);
       if (match) {
-        const token = await createToken({ id: existingUser._id });
+        const token = await createToken({
+          id: existingUser._id,
+          role: "customer",
+          email: existingUser.email,
+          name: existingUser.name,
+        });
         const accessToken = token.accessToken;
         const refreshToken = token.refreshToken;
-
         await userRefreshTokenModel.create({
           userId: existingUser._id,
           refreshToken: token.refreshToken,
           expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         });
 
-        res.cookie("customerToken", token.accessToken, {
+        res.cookie("accessToken", token.accessToken, {
           httpOnly: true,
           expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         });
@@ -102,6 +111,7 @@ const customer_login = async (req, res) => {
           accessToken,
           refreshToken,
           message: "Login Successfully",
+          role: existingUser.role,
         });
       } else {
         return responseReturn(res, 404, { error: "Password Wrong!" });
@@ -118,7 +128,7 @@ const customer_login = async (req, res) => {
 };
 
 const customer_logout = async (req, res) => {
-  res.cookie("customerToken", "", {
+  res.cookie("accessToken", "", {
     httpOnly: true,
     expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
   });
@@ -232,8 +242,6 @@ const customer_send_request = async (req, res) => {
     responseReturn(res, 500, { error: error.message });
   }
 };
-
-
 
 module.exports = {
   customer_register,

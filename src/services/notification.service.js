@@ -19,7 +19,7 @@ const pushNotification = async ({
   } else if (type === "review") {
     noti_content = "Bạn có một đánh giá mới cho bài viết của mình";
   }
-
+  
   if (!link) {
     throw new Error("noti_link is required");
   }

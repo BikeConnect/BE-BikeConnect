@@ -1,3 +1,5 @@
+"use strict";
+
 const reviewModel = require("../../models/reviewModel");
 const post = require("../../models/postModel");
 const { responseReturn } = require("../../utils/response");
@@ -8,14 +10,40 @@ const { pushNotification } = require("../../services/notification.service");
 
 
 const customer_submit_review = async (req, res) => {
-  const { postId, rating, review, name, customerId, ownerId } = req.body;
+  const {
+    postId,
+    rating,
+    review,
+    name,
+    ownerId,
+    customerId,
+    userId,
+    userName,
+    userType,
+  } = req.body;
   try {
+    // await reviewModel.create({
+    //   postId,
+    //   name,
+    //   rating,
+    //   review,
+    //   ownerReply: [],
+    //   date: moment(Date.now()).format("LL"),
+    //   customerId,
+    //   ownerId,
+    // });
     await reviewModel.create({
       postId,
       name,
       rating,
       review,
-      date: moment(Date.now()).format("LL"),
+      replies: [],
+      date: moment().format("LL"),
+      customerId,
+      ownerId,
+      userType,
+      userId,
+      userName,
     });
 
     let ratings = 0;
@@ -31,16 +59,9 @@ const customer_submit_review = async (req, res) => {
       rating: postRating,
     });
 
-    let senderType;
-    let senderId;
-
-    if (customerId) {
-      senderType = "customers";
-      senderId = customerId; 
-    } else if (ownerId) {
-      senderType = "Owner";
-      senderId = ownerId; 
-    }
+    let senderType = "owner";
+    const senderId =
+      senderType === "customers" ? req.body.customerId : req.body.ownerId;
 
     pushNotification({
       type: "review",
@@ -53,9 +74,7 @@ const customer_submit_review = async (req, res) => {
         review_name: name,
         review_content: review,
       },
-    })
-      .then((rs) => console.log(rs))
-      .catch(console.error);
+    }).catch(console.error);
     responseReturn(res, 201, { message: "Review Added Successfully" });
   } catch (error) {
     console.log(error.message);
@@ -73,7 +92,7 @@ const get_reviews = async (req, res) => {
       {
         $match: {
           postId: {
-            $eq: mongoose.Types.ObjectId.createFromHexString(postId),
+            $eq: new mongoose.Types.ObjectId(`${postId}`),
           },
           rating: {
             $not: {
@@ -144,7 +163,122 @@ const get_reviews = async (req, res) => {
   }
 };
 
+const customer_reply_review = async (req, res) => {
+  const { reviewId } = req.params;
+  const { content } = req.body;
+  const customerId = req.customerId;
+
+  try {
+    const review = await reviewModel.findById(reviewId);
+    if (!review) {
+      return responseReturn(res, 404, { error: "Review not found" });
+    }
+
+    if (
+      review.customerId.toString() !== customerId &&
+      !review.ownerReply.length
+    ) {
+      return responseReturn(res, 403, {
+        message: "You can only reply to your own reviews or owner's replies",
+      });
+    }
+
+    const newReply = {
+      content: content,
+      date: moment().format("LL"),
+    };
+
+    review.customerReply.push(newReply);
+    await review.save();
+
+    responseReturn(res, 200, {
+      message: "Reply added successfully",
+      review,
+    });
+  } catch (error) {
+    console.log(error.message);
+    responseReturn(res, 500, { error: error.message });
+  }
+};
+
+const customer_update_reply = async (req, res) => {
+  const { reviewId } = req.params;
+  const { content, replyId } = req.body;
+  const customerId = req.customerId;
+
+  try {
+    const review = await reviewModel.findById(reviewId);
+    if (!review) {
+      return responseReturn(res, 404, { error: "Review not found" });
+    }
+
+    if (review.customerId.toString() !== customerId) {
+      return responseReturn(res, 403, {
+        message: "You can only update your own replies",
+      });
+    }
+
+    const replyIndex = findReplyIndex(review.customerReply, replyId);
+    if (replyIndex === -1) {
+      return responseReturn(res, 404, { message: "Reply not found" });
+    }
+
+    review.customerReply[replyIndex] = {
+      ...review.customerReply[replyIndex].toObject(),
+      content: content,
+      date: moment().format("LL"),
+    };
+
+    await review.save();
+    responseReturn(res, 200, {
+      message: "Reply updated successfully",
+      review,
+    });
+  } catch (error) {
+    console.log(error.message);
+    responseReturn(res, 500, { error: error.message });
+  }
+};
+
+const customer_delete_reply = async (req, res) => {
+  const { reviewId } = req.params;
+  const { replyId } = req.body;
+  const customerId = req.customerId;
+
+  try {
+    const review = await reviewModel.findById(reviewId);
+    if (!review) {
+      return responseReturn(res, 404, { error: "Review not found" });
+    }
+
+    if (review.customerId.toString() !== customerId) {
+      return responseReturn(res, 403, {
+        message: "You can only delete your own replies",
+      });
+    }
+
+    const replyIndex = findReplyIndex(review.customerReply, replyId);
+    if (replyIndex === -1) {
+      return responseReturn(res, 404, { message: "Reply not found" });
+    }
+
+    review.customerReply.splice(replyIndex, 1);
+    await review.save();
+
+    responseReturn(res, 200, {
+      message: "Reply deleted successfully",
+      review,
+    });
+  } catch (error) {
+    console.log(error.message);
+    responseReturn(res, 500, { error: error.message });
+  }
+};
+
 module.exports = {
   customer_submit_review,
   get_reviews,
+  customer_reply_review,
+  customer_update_reply,
+  customer_delete_reply,
 };

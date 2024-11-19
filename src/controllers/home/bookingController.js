@@ -1,5 +1,6 @@
-const bookingModel = require("../../models/bookingModel");
-const { post } = require("../../models/postModel");
+"use strict";
+
+const post = require("../../models/postModel");
 const { formatPostDates } = require("../../utils/formatPostDates");
 const { responseReturn } = require("../../utils/response");
 const moment = require("moment");
@@ -8,7 +9,6 @@ const get_bookings = async (req, res) => {
   const { startDate, endDate } = req.query;
   const start = moment(startDate, "DD/MM/YYYY").toDate();
   const end = moment(endDate, "DD/MM/YYYY").toDate();
-
   if (start > end) {
     return responseReturn(res, 400, {
       message: "startDate must not greater than endDate",
@@ -22,7 +22,7 @@ const get_bookings = async (req, res) => {
         endDate: { $gte: end },
       })
       .select("-createdAt -updatedAt -__v");
-
+    console.log("availableVehicles:::", availableVehicles);
     const formattedVehicles = availableVehicles.map((vehicle) =>
       formatPostDates(vehicle)
     );

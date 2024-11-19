@@ -16,7 +16,8 @@ const postSchema = new Schema(
     },
     slug: {
       type: String,
-      required: true,
+      unique: true,
+      sparse: true,
     },
     category: {
       type: String,
@@ -83,7 +84,7 @@ const postSchema = new Schema(
     availableDates: [
       {
         type: Date,
-        required: true, 
+        required: true,
       },
     ],
   },
@@ -95,9 +96,11 @@ const postSchema = new Schema(
 
 // Create slug for post
 postSchema.pre("save", function (next) {
-  this.product_slug = slugify(this.name, { lower: true });
+  if (this.name) {
+    this.slug = slugify(this.name, { lower: true, strict: true, trim: true });
+  }
   next();
 });
 
 const post = model(DOCUMENT_NAME, postSchema);
-module.exports = post; 
+module.exports = post;

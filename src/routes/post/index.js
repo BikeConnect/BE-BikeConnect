@@ -23,4 +23,6 @@ router.patch(
 );
 router.delete("/:postId", asyncHandler(postController.deletePost));
 
+router.get("/owner-list-posts", asyncHandler(postController.getAllPosts));
+
 module.exports = router;

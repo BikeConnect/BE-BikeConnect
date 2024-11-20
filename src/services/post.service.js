@@ -108,6 +108,21 @@ class PostFactory {
       throw new Error(`Error filtering posts: ${error.message}`);
     }
   }
+
+  static async getAllPosts(ownerId) {
+    try {
+      const posts = await post
+        .find({ ownerId: ownerId })
+        .populate({
+          path: "ownerId",
+          select: "name email currentAddress",
+        })
+        .sort({ createdAt: -1 });
+      return posts;
+    } catch (error) {
+      throw new Error(`Error fetching posts: ${error.message}`);
+    }
+  }
 }
 
 class Post {

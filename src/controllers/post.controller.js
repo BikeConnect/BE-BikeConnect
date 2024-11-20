@@ -215,7 +215,21 @@ class PostController {
     }
   };
 
-  getDistance
+  getAllPosts = async (req, res, next) => {
+    try {
+      const ownerId = req.ownerId; // Lấy ownerId từ token đã được verify
+      console.log(ownerId);
+      const posts = await PostService.getAllPosts(ownerId);
+      console.log(posts);
+      
+      new SuccessResponse({
+        message: 'Get all posts successfully',
+        metadata: posts
+      }).send(res);
+    } catch (error) {
+      next(error);
+    }
+  };
 }
 
 module.exports = new PostController();

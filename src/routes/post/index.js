@@ -22,7 +22,7 @@ router.post(
   postController.createPost
 );
 router.patch(
-  "/:postId",
+  "/vehicle/:vehicleId",
   handleImageUpload,
   asyncHandler(postController.updatePost)
 );

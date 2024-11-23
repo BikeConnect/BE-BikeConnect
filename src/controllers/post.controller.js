@@ -7,6 +7,7 @@ const cloudinary = require("../configs/cloudinaryConfig");
 const { dateValidate } = require("../utils/validation");
 const { calculateDistance } = require("../services/location.service");
 const postModel = require("../models/postModel");
+const vehicle = require("../models/vehicleModel");
 
 // Owner
 class PostController {
@@ -19,17 +20,17 @@ class PostController {
       if (!req.body.vehicles) {
         return res.status(400).json({
           success: false,
-          message: "Vehicles data is required"
+          message: "Vehicles data is required",
         });
       }
 
       try {
         vehicles = JSON.parse(req.body.vehicles);
       } catch (error) {
-        console.error('JSON parse error:', error);
+        console.error("JSON parse error:", error);
         return res.status(400).json({
           success: false,
-          message: "Invalid vehicles JSON format"
+          message: "Invalid vehicles JSON format",
         });
       }
 
@@ -43,7 +44,7 @@ class PostController {
       if (!Array.isArray(vehicles) || vehicles.length !== quantity) {
         return res.status(400).json({
           success: false,
-          message: `Must provide details for exactly ${quantity} vehicles`
+          message: `Must provide details for exactly ${quantity} vehicles`,
         });
       }
 
@@ -53,7 +54,7 @@ class PostController {
           if (vehicleImages && Array.isArray(vehicleImages)) {
             vehicle.images = vehicleImages.map((file) => ({
               url: file.path,
-              publicId: file.filename
+              publicId: file.filename,
             }));
           }
         });
@@ -77,14 +78,48 @@ class PostController {
   updatePost = async (req, res, next) => {
     try {
       const ownerId = req.ownerId;
-      const postId = req.params.postId;
+      const vehicleId = req.params.vehicleId;
+
+      let updateData = { ...req.body };
+
+      if (updateData.startDate) {
+        const date = new Date(updateData.startDate);
+        date.setHours(12, 0, 0, 0);
+        updateData.startDate = date;
+      }
+      if (updateData.endDate) {
+        const date = new Date(updateData.endDate);
+        date.setHours(12, 0, 0, 0);
+        updateData.endDate = date;
+      }
+
+      if (updateData.startDate) {
+        updateData.startDate = new Date(updateData.startDate).toISOString();
+      }
+      if (updateData.endDate) {
+        updateData.endDate = new Date(updateData.endDate).toISOString(); 
+      }
+
+      if (typeof req.body.vehicles === 'string') {
+        try {
+          req.body.vehicles = JSON.parse(req.body.vehicles);
+        } catch (error) {
+          return res.status(400).json({
+            success: false,
+            message: "Invalid vehicles JSON format"
+          });
+        }
+      }
+
       const { error } = dateValidate(req.body);
 
       if (error) {
-        if (req.files && req.files.images) {
-          for (const file of req.files.images) {
-            await cloudinary.uploader.destroy(file.filename);
-          }
+        if (req.files) {
+          Object.keys(req.files).forEach(async (key) => {
+            for (const file of req.files[key]) {
+              await cloudinary.uploader.destroy(file.filename);
+            }
+          });
         }
         return res.status(400).json({
           success: false,
@@ -95,27 +130,37 @@ class PostController {
         });
       }
 
-      const currentPost = await PostService.getPostById(postId);
-      if (!currentPost) {
-        return res.status(404).json({ message: "Post not found" });
+      const currentVehicle = await vehicle.findById(vehicleId).populate({
+        path: "postId",
+        select: "ownerId",
+      });
+
+      if (!currentVehicle) {
+        return res.status(404).json({ message: "Vehicle not found" });
       }
 
-      if (currentPost.ownerId.toString() !== ownerId) {
-        if (req.files && req.files.images) {
-          for (const file of req.files.images) {
-            await cloudinary.uploader.destroy(file.filename);
-          }
+      if (currentVehicle.postId.ownerId.toString() !== ownerId) {
+        if (req.files) {
+          Object.keys(req.files).forEach(async (key) => {
+            for (const file of req.files[key]) {
+              await cloudinary.uploader.destroy(file.filename);
+            }
+          });
         }
         return res
           .status(403)
-          .json({ message: "You are not authorized to update this post" });
+          .json({ message: "You are not authorized to update this vehicle" });
       }
 
-      let updateData = { ...req.body };
+      
 
       if (req.files && req.files.images) {
-        for (const image of currentPost.images) {
-          await cloudinary.uploader.destroy(image.publicId);
+        if (currentVehicle.images && currentVehicle.images.length > 0) {
+          for (const image of currentVehicle.images) {
+            if (image.publicId) {
+              await cloudinary.uploader.destroy(image.publicId);
+            }
+          }
         }
 
         updateData.images = req.files.images.map((file) => ({
@@ -124,11 +169,15 @@ class PostController {
         }));
       }
 
-      const updatedPost = await PostService.updatePost(postId, updateData);
+      const updatedVehicle = await vehicle.findByIdAndUpdate(
+        vehicleId,
+        updateData,
+        { new: true }
+      );
 
       new SuccessResponse({
-        message: "Update Post success!",
-        metadata: updatedPost,
+        message: "Update Vehicle success!",
+        metadata: updatedVehicle,
       }).send(res);
     } catch (error) {
       next(error);

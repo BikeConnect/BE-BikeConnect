@@ -1,4 +1,4 @@
-'use strict';
+"use strict";
 
 const customerModel = require("../../models/customerModel");
 const ownerCustomerModel = require("../../models/message/ownerCustomerModel");
@@ -17,8 +17,8 @@ const {
 } = require("../../sendmail/email");
 
 const customer_register = async (req, res) => {
-  const { email, name, password } = req.body;
   try {
+    const { email, name, password } = req.body;
     const existingEmail = await customerModel.findOne({ email });
     const { error } = userValidate({ email, password });
     if (error) {

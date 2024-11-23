@@ -1,3 +1,5 @@
+'use strict';
+
 const { Schema, model } = require("mongoose");
 
 const bookingSchema = new Schema(
@@ -11,10 +13,15 @@ const bookingSchema = new Schema(
       ref: "Post",    
       required: true,   
     },
+    contractId: {
+      type: Schema.ObjectId,
+      ref: "Contract",
+      required: true,
+    },
     status: {
       type: String,
       default: "pending",
-      enum: ["pending", "accepted", "rejected"],
+      enum: ["pending", "accepted", "rejected", "completed", "cancelled"],
     },
     startDate: {
       type: Date,
@@ -24,8 +31,11 @@ const bookingSchema = new Schema(
       type: Date,
       required: true,
     },
+    totalPrice: {
+      type: Number,
+      required: true,
+    }
   },
-
   {
     timestamps: true,
   }

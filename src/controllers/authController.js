@@ -1,4 +1,4 @@
-'use strict';
+"use strict";
 
 const adminModel = require("../models/adminModel");
 const ownerModel = require("../models/ownerModel");
@@ -46,8 +46,8 @@ const admin_login = async (req, res) => {
 };
 
 const owner_register = async (req, res) => {
-  const { email, name, password } = req.body;
   try {
+    const { email, name, password } = req.body;
     const existingEmail = await ownerModel.findOne({ email });
     const { error } = userValidate({ email, password });
     if (error) {
@@ -337,9 +337,6 @@ const verifyToken = asyncHandler(async (req, res, next) => {
     return responseReturn(res, 401, { error: "Invalid token" });
   }
 });
-
-
-
 
 module.exports = {
   admin_login,

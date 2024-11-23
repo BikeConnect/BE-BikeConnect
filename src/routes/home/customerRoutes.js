@@ -1,9 +1,7 @@
-const { asyncHandler } = require("../../controllers/authController");
+"use strict";
+
 const customerController = require("../../controllers/home/customerController");
-
 const homeController = require("../../controllers/home/homeController");
-const bookingController = require("../../controllers/home/bookingController");
-
 const { checkAuthCustomer } = require("../../middlewares/checkAuth");
 const { verifyToken } = require("../../middlewares/verifyToken");
 const router = require("express").Router();
@@ -40,9 +38,9 @@ router.post(
   homeController.customer_submit_review
 );
 router.get("/home/customer/get-reviews/:postId", homeController.get_reviews);
-router.get("/home/find-booking", bookingController.get_bookings);
-router.get("/home/check-booking/:postId", bookingController.check_specific_booking);
-router.post("/home/send-booking-request", customerController.customer_send_request);
-
+router.post(
+  "/home/send-booking-request",
+  customerController.customer_send_request
+);
 
 module.exports = router;

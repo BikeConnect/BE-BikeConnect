@@ -1,5 +1,11 @@
 "use strict";
 
+const mongoose = require("mongoose");
+
+const convertToObjectIdMongodb = (id) => {
+  return new mongoose.Types.ObjectId(`${id}`);
+};
+
 const removeUndefinedObject = (obj) => {
   Object.keys(obj).forEach((key) => {
     if (obj[key] === null) {
@@ -28,4 +34,5 @@ const updateNestedObjectParser = (obj) => {
 module.exports = {
   removeUndefinedObject,
   updateNestedObjectParser,
+  convertToObjectIdMongodb,
 };

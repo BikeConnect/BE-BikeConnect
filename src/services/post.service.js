@@ -164,18 +164,27 @@ class PostFactory {
     }
   }
 
-  static async getAllPosts(ownerId) {
+  static async getAllVehicles(ownerId) {
     try {
-      const posts = await post
-        .find({ ownerId: ownerId })
+      const vehicles = await vehicle
+        .find()
         .populate({
-          path: "ownerId",
-          select: "name email currentAddress",
+          path: "postId",
+          match: { ownerId: ownerId },
+          select: "ownerId quantity",
+          populate: {
+            path: "ownerId",
+            select: "name email currentAddress"
+          }
         })
         .sort({ createdAt: -1 });
-      return posts;
+  
+      // Filter out vehicles where postId is null (meaning they don't belong to the owner)
+      const filteredVehicles = vehicles.filter(vehicle => vehicle.postId !== null);
+      
+      return filteredVehicles;
     } catch (error) {
-      throw new Error(`Error fetching posts: ${error.message}`);
+      throw new Error(`Error fetching vehicles: ${error.message}`);
     }
   }
 }

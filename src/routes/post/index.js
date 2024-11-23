@@ -27,6 +27,6 @@ router.delete(
   asyncHandler(postController.deleteVehicle)
 );
 
-router.get("/owner-list-posts", asyncHandler(postController.getAllPosts));
+router.get("/owner-list-vehicles", asyncHandler(postController.getAllVehicles));
 
 module.exports = router;

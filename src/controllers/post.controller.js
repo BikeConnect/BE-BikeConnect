@@ -302,16 +302,14 @@ class PostController {
     }
   };
 
-  getAllPosts = async (req, res, next) => {
+  getAllVehicles = async (req, res, next) => {
     try {
-      const ownerId = req.ownerId; // Lấy ownerId từ token đã được verify
-      console.log(ownerId);
-      const posts = await PostService.getAllPosts(ownerId);
-      console.log(posts);
-
+      const ownerId = req.ownerId;
+      const vehicles = await PostService.getAllVehicles(ownerId);
+  
       new SuccessResponse({
-        message: "Get all posts successfully",
-        metadata: posts,
+        message: "Get all vehicles successfully",
+        metadata: vehicles,
       }).send(res);
     } catch (error) {
       next(error);

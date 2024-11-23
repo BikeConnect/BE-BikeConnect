@@ -15,7 +15,12 @@ router.get("/filter", asyncHandler(postController.filterPosts));
 
 // Owner
 router.use(verifyToken);
-router.post("", handleImageUpload, asyncHandler(postController.createPost));
+router.post(
+  "/",
+  verifyToken,
+  handleImageUpload,
+  postController.createPost
+);
 router.patch(
   "/:postId",
   handleImageUpload,

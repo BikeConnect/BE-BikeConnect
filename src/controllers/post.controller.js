@@ -1,69 +1,75 @@
 "use strict";
 
 const { SuccessResponse } = require("../core/success.response");
-// const PostFactory = require("../services/post.service");
+const PostFactory = require("../services/post.service");
 const PostService = require("../services/post.service");
 const cloudinary = require("../configs/cloudinaryConfig");
 const { dateValidate } = require("../utils/validation");
 const { calculateDistance } = require("../services/location.service");
-const postModel = require("../models/postModel"); 
+const postModel = require("../models/postModel");
 
 // Owner
 class PostController {
   createPost = async (req, res, next) => {
     try {
-      const { error } = dateValidate(req.body);
-      if (error) {
-        if (req.files && req.files.images) {
-          for (const file of req.files.images) {
-            await cloudinary.uploader.destroy(file.filename);
-          }
-        }
+      const quantity = parseInt(req.body.quantity);
+      const ownerId = req.ownerId;
+      let vehicles;
+
+      if (!req.body.vehicles) {
         return res.status(400).json({
           success: false,
-          errors: error.details.map(detail => ({
-            field: detail.path[0],
-            message: detail.message
-          }))
+          message: "Vehicles data is required"
         });
       }
-      
-      const ownerId = req.ownerId;
 
-      let postData = {
-        ...req.body,
-        ownerId: ownerId,
-      };
+      try {
+        vehicles = JSON.parse(req.body.vehicles);
+      } catch (error) {
+        console.error('JSON parse error:', error);
+        return res.status(400).json({
+          success: false,
+          message: "Invalid vehicles JSON format"
+        });
+      }
 
-      postData.images = [];
+      if (!quantity || quantity <= 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Quantity must be greater than 0",
+        });
+      }
+
+      if (!Array.isArray(vehicles) || vehicles.length !== quantity) {
+        return res.status(400).json({
+          success: false,
+          message: `Must provide details for exactly ${quantity} vehicles`
+        });
+      }
 
       if (req.files) {
-        if (req.files.images) {
-          postData.images = postData.images.concat(
-            req.files.images.map((file) => ({
+        vehicles.forEach((vehicle, index) => {
+          const vehicleImages = req.files[`vehicle${index}_images`];
+          if (vehicleImages && Array.isArray(vehicleImages)) {
+            vehicle.images = vehicleImages.map((file) => ({
               url: file.path,
-              publicId: file.filename,
-            }))
-          );
-        }
-        if (req.files.image) {
-          postData.images.push({
-            url: req.files.image[0].path,
-            publicId: req.files.image[0].filename,
-          });
-        }
+              publicId: file.filename
+            }));
+          }
+        });
       }
 
+      const newPost = await PostFactory.createPostWithVehicles({
+        ownerId,
+        quantity,
+        vehicles,
+      });
+
       new SuccessResponse({
-        message: "Create new Post success!",
-        metadata: await PostService.createPost(postData),
+        message: "Created post with vehicles successfully",
+        metadata: newPost,
       }).send(res);
     } catch (error) {
-      if (req.files && req.files.images) {
-        for (const file of req.files.images) {
-          await cloudinary.uploader.destroy(file.filename);
-        }
-      }
       next(error);
     }
   };
@@ -73,7 +79,7 @@ class PostController {
       const ownerId = req.ownerId;
       const postId = req.params.postId;
       const { error } = dateValidate(req.body);
-      
+
       if (error) {
         if (req.files && req.files.images) {
           for (const file of req.files.images) {
@@ -82,10 +88,10 @@ class PostController {
         }
         return res.status(400).json({
           success: false,
-          errors: error.details.map(detail => ({
+          errors: error.details.map((detail) => ({
             field: detail.path[0],
-            message: detail.message
-          }))
+            message: detail.message,
+          })),
         });
       }
 
@@ -169,22 +175,24 @@ class PostController {
     }
 
     try {
-      const posts = await postModel.find().populate('ownerId');
+      const posts = await postModel.find().populate("ownerId");
 
-      const distances = await Promise.all(posts.map(async (post) => {
-        const ownerAddress = post.ownerId.currentAddress;
-        const distance = await calculateDistance(address, ownerAddress);
-        return { post, distance };
-      }));
+      const distances = await Promise.all(
+        posts.map(async (post) => {
+          const ownerAddress = post.ownerId.currentAddress;
+          const distance = await calculateDistance(address, ownerAddress);
+          return { post, distance };
+        })
+      );
 
       distances.sort((a, b) => a.distance.value - b.distance.value);
 
       res.json({
         message: "Posts sorted by distance",
-        posts: distances.map(item => ({
+        posts: distances.map((item) => ({
           post: item.post,
-          distance: item.distance
-        }))
+          distance: item.distance,
+        })),
       });
     } catch (error) {
       console.error("Error fetching posts sorted by distance:", error.message);
@@ -221,10 +229,10 @@ class PostController {
       console.log(ownerId);
       const posts = await PostService.getAllPosts(ownerId);
       console.log(posts);
-      
+
       new SuccessResponse({
-        message: 'Get all posts successfully',
-        metadata: posts
+        message: "Get all posts successfully",
+        metadata: posts,
       }).send(res);
     } catch (error) {
       next(error);

@@ -1,6 +1,7 @@
 "use strict";
 
 const post = require("../models/postModel");
+const vehicle = require("../models/vehicleModel");
 const cloudinary = require("../configs/cloudinaryConfig");
 const { removeUndefinedObject, updateNestedObjectParser } = require("../utils");
 const {
@@ -12,25 +13,46 @@ const { pushNotification } = require("./notification.service");
 
 // Owner
 class PostFactory {
-  static async createPost(payload) {
+  static async createPostWithVehicles(payload) {
     try {
-      // payload.availableDates = payload.availableDates.filter(
-      //   (date) => date >= payload.startDate && date <= payload.endDate
-      // );
-      const newPost = await post.create(payload);
+      const newPost = await post.create({
+        ownerId: payload.ownerId,
+        quantity: payload.quantity,
+        vehicles: [],
+      });
 
-      // const formatDates = {
-      //   ...newPost._doc,
-      //   startDate: moment(newPost.startDate).format("DD/MM/YYYY"),
-      //   endDate: moment(newPost.endDate).format("DD/MM/YYYY"),
-      //   availableDates: newPost.availableDates.map((date) =>
-      //     moment(date).format("DD/MM/YYYY")
-      //   ),
-      // };
+      const createdVehicles = await Promise.all(
+        payload.vehicles.map(async (vehicleData) => {
+          return vehicle.create({
+            postId: newPost._id,
+            name: vehicleData.name,
+            category: vehicleData.category,
+            brand: vehicleData.brand,
+            price: vehicleData.price,
+            discount: vehicleData.discount,
+            description: vehicleData.description,
+            model: vehicleData.model,
+            images: vehicleData.images || [],
+            rating: vehicleData.rating || 5,
+            address: vehicleData.address,
+            availability_status: "available",
+            license: vehicleData.license,
+            startDate: vehicleData.startDate,
+            endDate: vehicleData.endDate,
+            availableDates: vehicleData.availableDates || [],
+          });
+        })
+      );
 
-      return newPost;
+      newPost.vehicles = createdVehicles.map((vehicle) => vehicle._id);
+      await newPost.save();
+
+      return await post.findById(newPost._id).populate({
+        path: "vehicles",
+        model: "Vehicle",
+      });
     } catch (error) {
-      throw new Error(`Invalid Post Type: ${error.message}`);
+      throw new Error(`Error creating post with vehicles: ${error.message}`);
     }
   }
 
@@ -42,20 +64,47 @@ class PostFactory {
       }
 
       if (payload.images && payload.images.length > 0) {
-        if (currentPost.images && currentPost.images.length > 0) {
-          for (const image of currentPost.images) {
-            if (image.publicId) {
-              await cloudinary.uploader.destroy(image.publicId);
+        const vehicles = await vehicle.find({ postId });
+        for (const v of vehicles) {
+          if (v.images && v.images.length > 0) {
+            for (const image of v.images) {
+              if (image.publicId) {
+                await cloudinary.uploader.destroy(image.publicId);
+              }
             }
           }
         }
       }
 
-      const updatedPost = await post.findByIdAndUpdate(postId, payload, {
-        new: true,
+      await vehicle.updateMany(
+        { postId },
+        {
+          name: payload.name,
+          category: payload.category,
+          brand: payload.brand,
+          price: payload.price,
+          discount: payload.discount,
+          description: payload.description,
+          model: payload.model,
+          images: payload.images,
+          address: payload.address,
+          startDate: payload.startDate,
+          endDate: payload.endDate,
+          availableDates: payload.availableDates,
+        }
+      );
+
+      // Update post quantity if needed
+      if (payload.quantity !== undefined) {
+        currentPost.quantity = payload.quantity;
+        await currentPost.save();
+      }
+
+      return await post.findById(postId).populate({
+        path: "vehicles",
+        model: "Vehicle",
+        match: { postId },
       });
-      if (!updatedPost) throw new Error("Update Post error!");
-      return updatedPost;
     } catch (error) {
       throw new Error(`Error updating post: ${error.message}`);
     }

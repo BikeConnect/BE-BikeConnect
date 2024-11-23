@@ -254,27 +254,34 @@ class PostController {
     }
 
     try {
-      const posts = await postModel.find().populate("ownerId");
+      const vehicles = await vehicle.find().populate({
+        path: "postId",
+        select: "ownerId quantity",
+        populate: {
+          path: "ownerId",
+          select: "name email",
+        },
+      });
 
       const distances = await Promise.all(
-        posts.map(async (post) => {
-          const ownerAddress = post.ownerId.currentAddress;
-          const distance = await calculateDistance(address, ownerAddress);
-          return { post, distance };
+        vehicles.map(async (vehicle) => {
+          const vehicleAddress = vehicle.address;
+          const distance = await calculateDistance(address, vehicleAddress);
+          return { vehicle, distance };
         })
       );
 
       distances.sort((a, b) => a.distance.value - b.distance.value);
 
       res.json({
-        message: "Posts sorted by distance",
-        posts: distances.map((item) => ({
-          post: item.post,
+        message: "Vehicles sorted by distance",
+        vehicles: distances.map((item) => ({
+          vehicle: item.vehicle,
           distance: item.distance,
         })),
-      });
+      }); 
     } catch (error) {
-      console.error("Error fetching posts sorted by distance:", error.message);
+      console.error("Error fetching vehicles sorted by distance:", error.message);
       return next(error);
     }
   };
@@ -306,7 +313,7 @@ class PostController {
     try {
       const ownerId = req.ownerId;
       const vehicles = await PostService.getAllVehicles(ownerId);
-  
+
       new SuccessResponse({
         message: "Get all vehicles successfully",
         metadata: vehicles,

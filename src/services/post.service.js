@@ -112,23 +112,29 @@ class PostFactory {
 
   static async deletePost(postId) {
     try {
-      const postToDelete = await post.findById(postId);
+      const vehicleToDelete = await vehicle.findById(vehicleId);
 
-      if (!postToDelete) {
-        throw new Error("Post not found");
+      if (!vehicleToDelete) {
+        throw new Error("Vehicle not found");
       }
 
-      if (postToDelete.images && postToDelete.images.length > 0) {
-        for (const image of postToDelete.images) {
+      if (vehicleToDelete.images && vehicleToDelete.images.length > 0) {
+        for (const image of vehicleToDelete.images) {
           if (image.publicId) {
             await cloudinary.uploader.destroy(image.publicId);
           }
         }
       }
 
-      const deletedPost = await post.findByIdAndDelete(postId);
-      if (!deletedPost) throw new Error("Delete Post error!");
-      return deletedPost;
+      const deletedVehicle = await vehicle.findByIdAndDelete(vehicleId);
+      if (!deletedVehicle) throw new Error("Delete Vehicle error!");
+  
+      await post.findByIdAndUpdate(
+        vehicleToDelete.postId,
+        { $pull: { vehicles: vehicleId } }
+      );
+
+      return deletedVehicle;
     } catch (error) {
       throw new Error(`Error deleting post: ${error.message}`);
     }

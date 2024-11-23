@@ -15,18 +15,17 @@ router.get("/filter", asyncHandler(postController.filterPosts));
 
 // Owner
 router.use(verifyToken);
-router.post(
-  "/",
-  verifyToken,
-  handleImageUpload,
-  postController.createPost
-);
+router.post("/", verifyToken, handleImageUpload, postController.createPost);
 router.patch(
   "/vehicle/:vehicleId",
   handleImageUpload,
   asyncHandler(postController.updatePost)
 );
-router.delete("/:postId", asyncHandler(postController.deletePost));
+router.delete(
+  "/vehicle/:vehicleId",
+  verifyToken,
+  asyncHandler(postController.deleteVehicle)
+);
 
 router.get("/owner-list-posts", asyncHandler(postController.getAllPosts));
 

@@ -97,16 +97,16 @@ class PostController {
         updateData.startDate = new Date(updateData.startDate).toISOString();
       }
       if (updateData.endDate) {
-        updateData.endDate = new Date(updateData.endDate).toISOString(); 
+        updateData.endDate = new Date(updateData.endDate).toISOString();
       }
 
-      if (typeof req.body.vehicles === 'string') {
+      if (typeof req.body.vehicles === "string") {
         try {
           req.body.vehicles = JSON.parse(req.body.vehicles);
         } catch (error) {
           return res.status(400).json({
             success: false,
-            message: "Invalid vehicles JSON format"
+            message: "Invalid vehicles JSON format",
           });
         }
       }
@@ -152,8 +152,6 @@ class PostController {
           .json({ message: "You are not authorized to update this vehicle" });
       }
 
-      
-
       if (req.files && req.files.images) {
         if (currentVehicle.images && currentVehicle.images.length > 0) {
           for (const image of currentVehicle.images) {
@@ -184,27 +182,59 @@ class PostController {
     }
   };
 
-  deletePost = async (req, res, next) => {
+  deleteVehicle = async (req, res, next) => {
     try {
-      const postId = req.params.postId;
+      const vehicleId = req.params.vehicleId;
       const ownerId = req.ownerId;
 
-      const currentPost = await PostService.getPostById(postId);
-      if (!currentPost) {
-        return res.status(404).json({ message: "Post not found" });
+      const currentVehicle = await vehicle.findById(vehicleId).populate({
+        path: "postId",
+        select: "ownerId vehicles",
+      });
+
+      if (!currentVehicle) {
+        return res.status(404).json({
+          success: false,
+          message: "Vehicle not found",
+        });
       }
 
-      if (currentPost.ownerId.toString() !== ownerId) {
-        return res
-          .status(403)
-          .json({ message: "You are not authorized to delete this post" });
+      if (currentVehicle.postId.ownerId.toString() !== ownerId) {
+        return res.status(403).json({
+          success: false,
+          message: "You are not authorized to delete this vehicle",
+        });
       }
+
+      if (currentVehicle.images && currentVehicle.images.length > 0) {
+        for (const image of currentVehicle.images) {
+          if (image.publicId) {
+            await cloudinary.uploader.destroy(image.publicId);
+          }
+        }
+      }
+
+      const [deletedVehicle, updatedPost] = await Promise.all([
+        vehicle.findByIdAndDelete(vehicleId),
+        postModel.findByIdAndUpdate(
+          currentVehicle.postId._id,
+          {
+            $pull: { vehicles: vehicleId },
+            $inc: { quantity: -1 },
+          },
+          { new: true }
+        ),
+      ]);
 
       new SuccessResponse({
-        message: "Delete Post success!",
-        metadata: await PostService.deletePost(postId),
+        message: "Delete Vehicle success!",
+        metadata: {
+          deletedVehicle,
+          updatedPost,
+        },
       }).send(res);
     } catch (error) {
+      console.error("Delete vehicle error:", error);
       next(error);
     }
   };

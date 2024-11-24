@@ -29,6 +29,7 @@ const contractSchema = new Schema(
       },
       rejectionReason: String,
       confirmedAt: Date,
+      confirmedAt: Date,
     },
     customerConfirmed: {
       status: {
@@ -36,6 +37,7 @@ const contractSchema = new Schema(
         default: false,
       },
       rejectionReason: String,
+      confirmedAt: Date,
       confirmedAt: Date,
     },
     status: {
@@ -82,6 +84,22 @@ const contractSchema = new Schema(
         },
       },
     ],
+    modificationHistory: [
+      {
+        modifiedBy: {
+          type: Schema.ObjectId,
+          ref: "admins",
+          required: true,
+        },
+        modifiedAt: {
+          type: Date,
+          default: Date.now,
+        },
+        changes: {
+          type: Object,
+        },
+      },
+    ],
   },
   {
     collection: COLLECTION_NAME,
@@ -95,12 +113,18 @@ contractSchema.pre("save", async function (next) {
     this.contractNumber = `CTR${new Date().getFullYear()}${(count + 1)
       .toString()
       .padStart(4, "0")}`;
+    this.contractNumber = `CTR${new Date().getFullYear()}${(count + 1)
+      .toString()
+      .padStart(4, "0")}`;
   }
   next();
 });
 
 contractSchema.pre("save", async function (next) {
+contractSchema.pre("save", async function (next) {
   if (
+    this.ownerConfirmed.rejectionReason ||
+    this.customerConfirmed.rejectionReason
     this.ownerConfirmed.rejectionReason ||
     this.customerConfirmed.rejectionReason
   ) {

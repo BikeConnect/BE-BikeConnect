@@ -4,22 +4,25 @@ const Contract = require("../../models/contractModel");
 const bookingModel = require("../../models/bookingModel");
 const contractModel = require("../../models/contractModel");
 const post = require("../../models/postModel");
+const vehicleModel = require("../../models/vehicleModel");
 const notificationService = require("../../services/notification.service");
 const { convertToObjectIdMongodb } = require("../../utils");
 const { formatPostDates } = require("../../utils/formatPostDates");
 const { responseReturn } = require("../../utils/response");
 const moment = require("moment");
 
-
 const customer_submit_booking = async (req, res) => {
   try {
-    const { postId, startDate, endDate } = req.body;
+    const { vehicleId, startDate, endDate } = req.body;
     const customerId = req.id;
 
-    const postData = await post.findById(postId);
-    if (!postData) return responseReturn(res, 404, { error: "Post Not Found" });
+    const vehicleData = await vehicleModel
+      .findById(vehicleId)
+      .populate("postId");
+    if (!vehicleData)
+      return responseReturn(res, 404, { error: "Vehicle Not Found" });
 
-    if (postData.availability_status === "rented") {
+    if (vehicleData.availability_status === "rented") {
       return responseReturn(res, 400, {
         message: "Vehicle is not available for booking",
       });
@@ -28,12 +31,14 @@ const customer_submit_booking = async (req, res) => {
     const start = moment(startDate);
     const end = moment(endDate);
     const days = end.diff(start, "days") + 1;
-    const totalPrice = days * postData.price * (1 - postData.discount / 100);
+    const totalPrice =
+      days * vehicleData.price * (1 - vehicleData.discount / 100);
 
     const contract = await contractModel.create({
       customerId,
-      ownerId: convertToObjectIdMongodb(postData.ownerId),
-      postId,
+      ownerId: convertToObjectIdMongodb(vehicleData.postId.ownerId),
+      vehicleId,
+      postId: vehicleData.postId._id,
       startDate,
       endDate,
       totalAmount: totalPrice,
@@ -53,7 +58,7 @@ const customer_submit_booking = async (req, res) => {
       senderId: customerId,
       senderType: "customer",
       link: contract._id,
-      receiverId: postData.ownerId,
+      receiverId: convertToObjectIdMongodb(vehicleData.postId.ownerId),
       content: "Bạn có yêu cầu thuê xe mới, vui lòng xác nhận trong vòng 24h",
       contractId: contract._id,
       actionType: "CONTRACT_REQUEST",
@@ -70,8 +75,6 @@ const customer_submit_booking = async (req, res) => {
   }
 };
 
-
-
 const get_bookings = async (req, res) => {
   const { startDate, endDate } = req.query;
   const start = moment(startDate, "DD/MM/YYYY").toDate();
@@ -82,12 +85,13 @@ const get_bookings = async (req, res) => {
     });
   }
   try {
-    const availableVehicles = await post
+    const availableVehicles = await vehicleModel
       .find({
         availability_status: "available",
         startDate: { $lte: start },
         endDate: { $gte: end },
       })
+      .populate("postId")
       .select("-createdAt -updatedAt -__v");
     console.log("availableVehicles:::", availableVehicles);
     const formattedVehicles = availableVehicles.map((vehicle) =>
@@ -102,10 +106,10 @@ const get_bookings = async (req, res) => {
 };
 
 const check_specific_booking = async (req, res) => {
-  const { postId } = req.params;
+  const { vehicleId } = req.params;
   try {
-    const specificBooking = await post
-      .findById(postId)
+    const specificBooking = await vehicleModel
+      .findById(vehicleId)
       .select("availableDates availability_status");
     if (!specificBooking) {
       return responseReturn(res, 404, { error: "Booking not found" });
@@ -126,81 +130,6 @@ const check_specific_booking = async (req, res) => {
     };
 
     responseReturn(res, 200, { specificBooking: formattedBooking });
-  } catch (error) {
-    console.log(error.message);
-    responseReturn(res, 500, { error: error.message });
-  }
-};
-
-const create_booking = async (req, res) => {
-  try {
-    const { postId, startDate, endDate } = req.body;
-    const customerId = req.id;
-    const postData = await post.findById(postId);
-    if (!postData) return responseReturn(res, 404, { error: "Post Not Found" });
-
-    if (postData.availability_status === "rented") {
-      return responseReturn(res, 400, {
-        message: "Vehicle is not available for booking",
-      });
-    }
-
-    const start = moment(startDate);
-    const end = moment(endDate);
-    const days = end.diff(start, "days") + 1;
-    const totalPrice = days * postData.price * (1 - postData.discount / 100);
-
-    const contract = await Contract.create({
-      customerId,
-      ownerId: convertToObjectIdMongodb(postData.ownerId),
-      postId,
-      startDate,
-      endDate,
-      totalAmount: totalPrice,
-      terms: "Áp dụng tiêu chuẩn thuê và các điều khoản",
-      status: "draft",
-      customerConfirmed: {
-        status: false,
-      },
-      ownerConfirmed: {
-        status: false,
-      },
-    });
-
-    // await contract.save();
-    console.log("contract:::", contract);
-
-    const booking = await bookingModel.create({
-      customerId,
-      postId,
-      contractId: convertToObjectIdMongodb(contract._id),
-      startDate,
-      endDate,
-      totalPrice,
-    });
-
-    await post.findByIdAndUpdate(postId, {
-      availability_status: "pending",
-    });
-
-    await notificationService.createNotification({
-      type: "contract",
-      senderId: customerId,
-      senderType: "customers",
-      link: contract._id,
-      receiverId: postData.ownerId,
-      content: "Bạn đã tạo hợp đồng thuê xe thành công",
-      contractId: contract._id,
-      actionType: "CONTRACT_REQUEST",
-      options: {},
-    });
-
-    responseReturn(res, 201, {
-      success: true,
-      message: "Booking created successfully",
-      booking,
-      contract,
-    });
   } catch (error) {
     console.log(error.message);
     responseReturn(res, 500, { error: error.message });
@@ -261,7 +190,6 @@ const confirm_booking_contract = async (req, res) => {
 
 module.exports = {
   customer_submit_booking,
-  create_booking,
   get_bookings,
   check_specific_booking,
   confirm_booking_contract,

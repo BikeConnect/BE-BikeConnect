@@ -1,4 +1,4 @@
-'use strict';
+"use strict";
 
 const { Schema, model } = require("mongoose");
 
@@ -10,8 +10,13 @@ const bookingSchema = new Schema(
     },
     postId: {
       type: Schema.ObjectId,
-      ref: "Post",    
-      required: true,   
+      ref: "Post",
+      required: true,
+    },
+    vehicleId: {
+      type: Schema.ObjectId,
+      ref: "Vehicle",
+      required: true,
     },
     contractId: {
       type: Schema.ObjectId,
@@ -34,7 +39,7 @@ const bookingSchema = new Schema(
     totalPrice: {
       type: Number,
       required: true,
-    }
+    },
   },
   {
     timestamps: true,

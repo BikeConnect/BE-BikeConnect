@@ -41,6 +41,7 @@ const notificationSchema = new Schema(
         "MODIFICATION_REQUESTED",
         "MODIFICATION_APPROVED",
         "MODIFICATION_REJECTED",
+        "REVIEW_REPLIED",
       ],
       required: function () {
         return this.noti_type === "contract";

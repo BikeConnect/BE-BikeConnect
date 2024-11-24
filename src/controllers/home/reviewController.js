@@ -2,7 +2,7 @@
 
 const reviewModel = require("../../models/reviewModel");
 const { responseReturn } = require("../../utils/response");
-const { pushNotification } = require("../../services/notification.service");
+const notificationService = require("../../services/notification.service");
 const moment = require("moment");
 const { findReplyIndex } = require("../../helpers/findIndex");
 
@@ -24,11 +24,18 @@ const add_reply = async (req, res) => {
     const review = await reviewModel
       .findById(reviewId)
       .populate("ownerId", "shopInfo.shopName")
-      .populate("postId");
+      .populate({
+        path: "vehicleId",
+        populate: {
+          path: "postId",
+          select: "ownerId",
+        },
+      });
 
     if (!review) return responseReturn(res, 404, { error: "Review not found" });
+
     if (userRole === "owner") {
-      if (review.postId.ownerId.toString() !== userId) {
+      if (review.vehicleId.postId.ownerId.toString() !== userId) {
         return responseReturn(res, 403, {
           message: "Only the owner of this post can reply to reviews",
         });
@@ -49,20 +56,24 @@ const add_reply = async (req, res) => {
     review.replies.push(newReply);
     await review.save();
 
-    // pushNotification({
-    //   type: "review",
-    //   receiverId: 1,
-    //   senderType: userType,
-    //   senderId: userId,
-    //   link: reviewId,
-    //   options: {
-    //     //   review_rating: req.body.rating,
-    //     //   review_name: req.body.name,
-    //     //   review_content: req.body.review,
-    //     reply_content: content,
-    //     sender_name: userName,
-    //   },
-    // }).catch(console.error);
+    const receiverId =
+      userRole === "owner" ? review.customerId : review.ownerId;
+    await notificationService.createNotification({
+      type: "review",
+      senderId: userId,
+      senderType: userRole,
+      link: review.vehicleId._id,
+      receiverId: receiverId,
+      content: `${userName} đã trả lời đánh giá của bạn`,
+      options: {
+        reply_content: content,
+        sender_name: userName,
+        review_id: reviewId,
+        vehicle_id: review.vehicleId._id,
+        post_id: review.vehicleId.postId._id,
+      },
+      actionType: "REVIEW_REPLIED",
+    });
 
     responseReturn(res, 201, { message: "Reply added successfully" });
   } catch (error) {

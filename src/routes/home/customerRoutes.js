@@ -38,9 +38,6 @@ router.post(
   homeController.customer_submit_review
 );
 router.get("/home/customer/get-reviews/:postId", homeController.get_reviews);
-router.post(
-  "/home/send-booking-request",
-  customerController.customer_send_request
-);
+
 
 module.exports = router;

@@ -2,7 +2,7 @@
 
 const bookingModel = require("../../models/bookingModel");
 const contractModel = require("../../models/contractModel");
-const Post = require("../../models/postModel");
+const vehicleModel = require("../../models/vehicleModel");
 const notificationService = require("../../services/notification.service");
 const { convertToObjectIdMongodb } = require("../../utils");
 const { responseReturn } = require("../../utils/response");
@@ -170,17 +170,17 @@ const confirmContract = async (req, res) => {
           customerId: contract.customerId,
           postId: contract.postId,
           contractId: contract._id,
+          vehicleId: contract.vehicleId,
           startDate: contract.startDate,
           endDate: contract.endDate,
           totalPrice: contract.totalAmount,
           status: "accepted",
         });
 
-        await Post.findByIdAndUpdate(contract.postId, {
+        await vehicleModel.findByIdAndUpdate(contract.vehicleId, {
           availability_status: "rented",
         });
 
-        // Thông báo cho owner
         await notificationService.createNotification({
           type: "contract",
           senderId: userId,
@@ -311,7 +311,7 @@ cron.schedule("1 0 * * *", async (req, res) => {
         { status: "completed" }
       );
 
-      await Post.findByIdAndUpdate(contract.postId, {
+      await vehicleModel.findByIdAndUpdate(contract.postId, {
         availability_status: "available",
       });
 

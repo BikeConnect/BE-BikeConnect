@@ -3,7 +3,6 @@
 const customerModel = require("../../models/customerModel");
 const ownerCustomerModel = require("../../models/message/ownerCustomerModel");
 const userRefreshTokenModel = require("../../models/userRefreshTokenModel");
-const bookingModel = require("../../models/bookingModel");
 const { createToken } = require("../../utils/createToken");
 const { responseReturn } = require("../../utils/response");
 const { userValidate } = require("../../utils/validation");
@@ -223,48 +222,6 @@ const customer_reset_password = async (req, res) => {
   }
 };
 
-const customer_send_request = async (req, res) => {
-  const { customerId, postId, startDate, endDate } = req.body;
-  try {
-    const postDetails = await post.findById(postId);
-    if (!postDetails) {
-      return responseReturn(res, 404, { error: "Post not found" });
-    }
-    const ownerId = postDetails.ownerId;
-
-    const bookingRequest = await bookingModel.create({
-      customerId,
-      postId,
-      startDate,
-      endDate,
-      status: "pending",
-    });
-
-    pushNotification({
-      type: "booking",
-      receiverId: 1,
-      senderType: "customers",
-      senderId: customerId,
-      link: postId,
-      options: {
-        booking_name: postDetails.name,
-        booking_description: postDetails.description,
-        booking_startDate: bookingRequest.createdAt,
-      },
-    })
-      .then((rs) => console.log(rs))
-      .catch(console.error);
-
-    responseReturn(res, 201, {
-      bookingRequest,
-      message: "Send Booking Request Successfully",
-    });
-  } catch (error) {
-    console.log(error.message);
-    responseReturn(res, 500, { error: error.message });
-  }
-};
-
 module.exports = {
   customer_register,
   customer_login,
@@ -272,5 +229,4 @@ module.exports = {
   customer_verify_email,
   customer_forgot_password,
   customer_reset_password,
-  customer_send_request,
 };

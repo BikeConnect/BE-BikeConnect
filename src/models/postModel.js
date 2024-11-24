@@ -27,3 +27,4 @@ const postSchema = new Schema(
 
 const post = model(DOCUMENT_NAME, postSchema);
 module.exports = post;
+

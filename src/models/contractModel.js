@@ -22,6 +22,11 @@ const contractSchema = new Schema(
       ref: "Owner",
       required: true,
     },
+    vehicleId: {
+      type: Schema.Types.ObjectId,
+      ref: "Vehicle",
+      required: true,
+    },
     ownerConfirmed: {
       status: {
         type: Boolean,

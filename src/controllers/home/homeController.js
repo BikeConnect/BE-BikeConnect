@@ -1,17 +1,15 @@
 "use strict";
 
 const reviewModel = require("../../models/reviewModel");
-const post = require("../../models/postModel");
+const vehicleModel = require("../../models/vehicleModel");
 const { responseReturn } = require("../../utils/response");
 const moment = require("moment");
-const mongoose = require("mongoose");
 const { pushNotification } = require("../../services/notification.service");
-
-
+const { convertToObjectIdMongodb } = require("../../utils");
 
 const customer_submit_review = async (req, res) => {
   const {
-    postId,
+    vehicleId,
     rating,
     review,
     name,
@@ -22,17 +20,14 @@ const customer_submit_review = async (req, res) => {
     userType,
   } = req.body;
   try {
-    // await reviewModel.create({
-    //   postId,
-    //   name,
-    //   rating,
-    //   review,
-    //   ownerReply: [],
-    //   date: moment(Date.now()).format("LL"),
-    //   customerId,
-    //   ownerId,
-    // });
+    const vehicle = await vehicleModel.findById(vehicleId);
+    if (!vehicle)
+      return responseReturn(res, 404, { message: "Vehicle not found" });
+
+    const postId = vehicle.postId;
+
     await reviewModel.create({
+      vehicleId,
       postId,
       name,
       rating,
@@ -47,7 +42,7 @@ const customer_submit_review = async (req, res) => {
     });
 
     let ratings = 0;
-    const reviews = await reviewModel.find({ postId });
+    const reviews = await reviewModel.find({ vehicleId });
     for (let i = 0; i < reviews.length; i++) {
       ratings += reviews[i].rating;
     }
@@ -55,7 +50,7 @@ const customer_submit_review = async (req, res) => {
     if (reviews.length !== 0) {
       postRating = (ratings / reviews.length).toFixed(1);
     }
-    await post.findByIdAndUpdate(postId, {
+    await vehicleModel.findByIdAndUpdate(postId, {
       rating: postRating,
     });
 
@@ -63,18 +58,21 @@ const customer_submit_review = async (req, res) => {
     const senderId =
       senderType === "customers" ? req.body.customerId : req.body.ownerId;
 
-    pushNotification({
+    await notificationService.createNotification({
       type: "review",
-      receiverId: 1,
-      senderType: senderType,
-      senderId: senderId,
-      link: postId,
+      senderId: customerId,
+      senderType: "customer",
+      link: vehicleId, // Có thể dùng vehicleId hoặc postId dựa vào UI
+      receiverId: ownerId,
+      content: `${name} đã đánh giá xe của bạn ${rating} sao`,
       options: {
         review_rating: rating,
         review_name: name,
         review_content: review,
+        vehicleId: vehicleId, 
+        postId: postId, 
       },
-    }).catch(console.error);
+    });
     responseReturn(res, 201, { message: "Review Added Successfully" });
   } catch (error) {
     console.log(error.message);
@@ -82,7 +80,7 @@ const customer_submit_review = async (req, res) => {
 };
 
 const get_reviews = async (req, res) => {
-  const { postId } = req.params;
+  const { vehicleId } = req.params;
   let { pageNo } = req.query;
   pageNo = parseInt(pageNo);
   const limit = 5;
@@ -91,8 +89,8 @@ const get_reviews = async (req, res) => {
     let getRating = await reviewModel.aggregate([
       {
         $match: {
-          postId: {
-            $eq: new mongoose.Types.ObjectId(`${postId}`),
+          vehicleId: {
+            $eq: convertToObjectIdMongodb(vehicleId),
           },
           rating: {
             $not: {
@@ -146,9 +144,9 @@ const get_reviews = async (req, res) => {
       }
     }
 
-    const getAll = await reviewModel.find({ postId });
+    const getAll = await reviewModel.find({ vehicleId });
     const reviews = await reviewModel
-      .find({ postId })
+      .find({ vehicleId })
       .skip(skipPage)
       .limit(limit)
       .sort({ createdAt: -1 });
@@ -163,122 +161,7 @@ const get_reviews = async (req, res) => {
   }
 };
 
-const customer_reply_review = async (req, res) => {
-  const { reviewId } = req.params;
-  const { content } = req.body;
-  const customerId = req.customerId;
-
-  try {
-    const review = await reviewModel.findById(reviewId);
-    if (!review) {
-      return responseReturn(res, 404, { error: "Review not found" });
-    }
-
-    if (
-      review.customerId.toString() !== customerId &&
-      !review.ownerReply.length
-    ) {
-      return responseReturn(res, 403, {
-        message: "You can only reply to your own reviews or owner's replies",
-      });
-    }
-
-    const newReply = {
-      content: content,
-      date: moment().format("LL"),
-    };
-
-    review.customerReply.push(newReply);
-    await review.save();
-
-    responseReturn(res, 200, {
-      message: "Reply added successfully",
-      review,
-    });
-  } catch (error) {
-    console.log(error.message);
-    responseReturn(res, 500, { error: error.message });
-  }
-};
-
-const customer_update_reply = async (req, res) => {
-  const { reviewId } = req.params;
-  const { content, replyId } = req.body;
-  const customerId = req.customerId;
-
-  try {
-    const review = await reviewModel.findById(reviewId);
-    if (!review) {
-      return responseReturn(res, 404, { error: "Review not found" });
-    }
-
-    if (review.customerId.toString() !== customerId) {
-      return responseReturn(res, 403, {
-        message: "You can only update your own replies",
-      });
-    }
-
-    const replyIndex = findReplyIndex(review.customerReply, replyId);
-    if (replyIndex === -1) {
-      return responseReturn(res, 404, { message: "Reply not found" });
-    }
-
-    review.customerReply[replyIndex] = {
-      ...review.customerReply[replyIndex].toObject(),
-      content: content,
-      date: moment().format("LL"),
-    };
-
-    await review.save();
-    responseReturn(res, 200, {
-      message: "Reply updated successfully",
-      review,
-    });
-  } catch (error) {
-    console.log(error.message);
-    responseReturn(res, 500, { error: error.message });
-  }
-};
-
-const customer_delete_reply = async (req, res) => {
-  const { reviewId } = req.params;
-  const { replyId } = req.body;
-  const customerId = req.customerId;
-
-  try {
-    const review = await reviewModel.findById(reviewId);
-    if (!review) {
-      return responseReturn(res, 404, { error: "Review not found" });
-    }
-
-    if (review.customerId.toString() !== customerId) {
-      return responseReturn(res, 403, {
-        message: "You can only delete your own replies",
-      });
-    }
-
-    const replyIndex = findReplyIndex(review.customerReply, replyId);
-    if (replyIndex === -1) {
-      return responseReturn(res, 404, { message: "Reply not found" });
-    }
-
-    review.customerReply.splice(replyIndex, 1);
-    await review.save();
-
-    responseReturn(res, 200, {
-      message: "Reply deleted successfully",
-      review,
-    });
-  } catch (error) {
-    console.log(error.message);
-    responseReturn(res, 500, { error: error.message });
-  }
-};
-
 module.exports = {
   customer_submit_review,
   get_reviews,
-  customer_reply_review,
-  customer_update_reply,
-  customer_delete_reply,
 };

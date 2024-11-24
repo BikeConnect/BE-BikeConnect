@@ -121,10 +121,7 @@ contractSchema.pre("save", async function (next) {
 });
 
 contractSchema.pre("save", async function (next) {
-contractSchema.pre("save", async function (next) {
   if (
-    this.ownerConfirmed.rejectionReason ||
-    this.customerConfirmed.rejectionReason
     this.ownerConfirmed.rejectionReason ||
     this.customerConfirmed.rejectionReason
   ) {
@@ -138,6 +135,7 @@ contractSchema.pre("save", async function (next) {
   }
   next();
 });
+
 contractSchema.virtual("rentalDays").get(function () {
   return Math.ceil((this.endDate - this.startDate) / (1000 * 60 * 60 * 24));
 });

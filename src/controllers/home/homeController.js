@@ -1,25 +1,48 @@
+"use strict";
+
 const reviewModel = require("../../models/reviewModel");
-const { post } = require("../../models/postModel");
+const vehicleModel = require("../../models/vehicleModel");
 const { responseReturn } = require("../../utils/response");
 const moment = require("moment");
-const mongoose = require("mongoose");
 const { pushNotification } = require("../../services/notification.service");
+const { convertToObjectIdMongodb } = require("../../utils");
 
 const customer_submit_review = async (req, res) => {
-  const { postId, rating, review, name, ownerId, customerId } = req.body;
+  const {
+    vehicleId,
+    rating,
+    review,
+    name,
+    ownerId,
+    customerId,
+    userId,
+    userName,
+    userType,
+  } = req.body;
   try {
+    const vehicle = await vehicleModel.findById(vehicleId);
+    if (!vehicle)
+      return responseReturn(res, 404, { message: "Vehicle not found" });
+
+    const postId = vehicle.postId;
+
     await reviewModel.create({
+      vehicleId,
       postId,
       name,
       rating,
       review,
-      date: moment(Date.now()).format("LL"),
-      customerId, 
-      ownerId, 
+      replies: [],
+      date: moment().format("LL"),
+      customerId,
+      ownerId,
+      userType,
+      userId,
+      userName,
     });
 
     let ratings = 0;
-    const reviews = await reviewModel.find({ postId });
+    const reviews = await reviewModel.find({ vehicleId });
     for (let i = 0; i < reviews.length; i++) {
       ratings += reviews[i].rating;
     }
@@ -27,28 +50,29 @@ const customer_submit_review = async (req, res) => {
     if (reviews.length !== 0) {
       postRating = (ratings / reviews.length).toFixed(1);
     }
-    await post.findByIdAndUpdate(postId, {
+    await vehicleModel.findByIdAndUpdate(postId, {
       rating: postRating,
     });
 
-    let senderType = "Owner";
+    let senderType = "owner";
     const senderId =
       senderType === "customers" ? req.body.customerId : req.body.ownerId;
 
-    pushNotification({
+    await notificationService.createNotification({
       type: "review",
-      receiverId: 1,
-      senderType: senderType,
-      senderId: senderId,
-      link: postId,
+      senderId: customerId,
+      senderType: "customer",
+      link: vehicleId, // Có thể dùng vehicleId hoặc postId dựa vào UI
+      receiverId: ownerId,
+      content: `${name} đã đánh giá xe của bạn ${rating} sao`,
       options: {
-        review_rating: req.body.rating,
-        review_name: req.body.name,
-        review_content: req.body.review,
+        review_rating: rating,
+        review_name: name,
+        review_content: review,
+        vehicleId: vehicleId, 
+        postId: postId, 
       },
-    })
-      // .then((rs) => console.log(rs))
-      .catch(console.error);
+    });
     responseReturn(res, 201, { message: "Review Added Successfully" });
   } catch (error) {
     console.log(error.message);
@@ -56,7 +80,7 @@ const customer_submit_review = async (req, res) => {
 };
 
 const get_reviews = async (req, res) => {
-  const { postId } = req.params;
+  const { vehicleId } = req.params;
   let { pageNo } = req.query;
   pageNo = parseInt(pageNo);
   const limit = 5;
@@ -65,8 +89,8 @@ const get_reviews = async (req, res) => {
     let getRating = await reviewModel.aggregate([
       {
         $match: {
-          postId: {
-            $eq: mongoose.Types.ObjectId.createFromHexString(postId),
+          vehicleId: {
+            $eq: convertToObjectIdMongodb(vehicleId),
           },
           rating: {
             $not: {
@@ -120,9 +144,9 @@ const get_reviews = async (req, res) => {
       }
     }
 
-    const getAll = await reviewModel.find({ postId });
+    const getAll = await reviewModel.find({ vehicleId });
     const reviews = await reviewModel
-      .find({ postId })
+      .find({ vehicleId })
       .skip(skipPage)
       .limit(limit)
       .sort({ createdAt: -1 });

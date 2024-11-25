@@ -1,4 +1,5 @@
-const { sendVerificationEmail, sendWelcomeEmail } = require("../../sendmail/email");
+"use strict";
+
 const customerModel = require("../../models/customerModel");
 const ownerCustomerModel = require("../../models/message/ownerCustomerModel");
 const userRefreshTokenModel = require("../../models/userRefreshTokenModel");
@@ -6,10 +7,17 @@ const { createToken } = require("../../utils/createToken");
 const { responseReturn } = require("../../utils/response");
 const { userValidate } = require("../../utils/validation");
 const bcrypt = require("bcrypt");
+const crypto = require("node:crypto");
+const {
+  sendVerificationEmail,
+  sendWelcomeEmail,
+  sendPasswordResetEmail,
+  sendResetSuccessEmail,
+} = require("../../sendmail/email");
 
 const customer_register = async (req, res) => {
-  const { email, name, password } = req.body;
   try {
+    const { email, name, password } = req.body;
     const existingEmail = await customerModel.findOne({ email });
     const { error } = userValidate({ email, password });
     if (error) {
@@ -21,13 +29,16 @@ const customer_register = async (req, res) => {
       const verificationToken = Math.floor(
         100000 + Math.random() * 900000
       ).toString();
+
       const customer = await customerModel.create({
         name: name.trim(),
         email: email.trim(),
         password: await bcrypt.hash(password, 10),
+        role: "customer",
         verificationToken,
-        verificationTokenExpiresAt: Date.now() + 24 * 60 * 60 * 1000, 
+        verificationTokenExpiresAt: Date.now() + 24 * 60 * 60 * 1000,
       });
+
       await ownerCustomerModel.create({
         myId: customer.id,
       });
@@ -35,8 +46,9 @@ const customer_register = async (req, res) => {
         id: customer.id,
         name: customer.name,
         email: customer.email,
+        role: customer.role,
       });
-      res.cookie("customerToken", accessToken, {
+      res.cookie("accessToken", accessToken, {
         expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       });
       await sendVerificationEmail(customer.email, verificationToken);
@@ -64,7 +76,7 @@ const customer_login = async (req, res) => {
 
     const existingUser = await customerModel
       .findOne({ email })
-      .select("+password");
+      .select("+password +role");
     if (!existingUser) {
       return responseReturn(res, 401, { message: "Invalid email or password" });
     }
@@ -76,17 +88,21 @@ const customer_login = async (req, res) => {
     if (existingUser) {
       const match = await bcrypt.compare(password, existingUser.password);
       if (match) {
-        const token = await createToken({ id: existingUser._id });
+        const token = await createToken({
+          id: existingUser._id,
+          role: "customer",
+          email: existingUser.email,
+          name: existingUser.name,
+        });
         const accessToken = token.accessToken;
         const refreshToken = token.refreshToken;
-
         await userRefreshTokenModel.create({
           userId: existingUser._id,
           refreshToken: token.refreshToken,
           expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         });
 
-        res.cookie("customerToken", token.accessToken, {
+        res.cookie("accessToken", token.accessToken, {
           httpOnly: true,
           expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         });
@@ -94,6 +110,7 @@ const customer_login = async (req, res) => {
           accessToken,
           refreshToken,
           message: "Login Successfully",
+          role: existingUser.role,
         });
       } else {
         return responseReturn(res, 404, { error: "Password Wrong!" });
@@ -110,7 +127,7 @@ const customer_login = async (req, res) => {
 };
 
 const customer_logout = async (req, res) => {
-  res.cookie("customerToken", "", {
+  res.cookie("accessToken", "", {
     httpOnly: true,
     expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
   });
@@ -149,10 +166,67 @@ const customer_verify_email = async (req, res) => {
       message: error.message,
     });
   }
-}
+};
+
+const customer_forgot_password = async (req, res) => {
+  const { email } = req.body;
+  try {
+    const customer = await customerModel.findOne({ email });
+    if (!customer) {
+      return responseReturn(res, 404, { error: "Email Not Found" });
+    }
+
+    const resetToken = crypto.randomBytes(32).toString("hex");
+    const resetTokenExpire = Date.now() + 5 * 60 * 1000; // 5 minutes
+    customer.resetPasswordToken = resetToken;
+    customer.resetPasswordExpiresAt = resetTokenExpire;
+    await customer.save();
+
+    await sendPasswordResetEmail(
+      customer.email,
+      `${process.env.CLIENT_URL}/reset-password/${resetToken}`
+    ); //tham so thu 2 la link reset password 'http://localhost:3000/customer-reset-password/${resetToken}'
+    responseReturn(res, 200, {
+      message: "Password reset link sent to your email!",
+    });
+  } catch (error) {
+    console.log(error.message);
+    responseReturn(res, 500, { error: error.message });
+  }
+};
+
+const customer_reset_password = async (req, res) => {
+  try {
+    const { token } = req.params;
+    const { password } = req.body;
+    const customer = await customerModel.findOne({
+      resetPasswordToken: token,
+      resetPasswordExpiresAt: { $gt: Date.now() },
+    });
+    if (!customer) {
+      return responseReturn(res, 404, {
+        error: "Invalid or expired reset token",
+      });
+    }
+    const hashedPassword = await bcrypt.hash(password, 10);
+    customer.password = hashedPassword;
+    customer.resetPasswordToken = undefined;
+    customer.resetPasswordExpiresAt = undefined;
+    await customer.save();
+    await sendResetSuccessEmail(customer.email);
+    responseReturn(res, 200, {
+      message: "Password reset successfully",
+    });
+  } catch (error) {
+    console.log(error.message);
+  }
+};
+
 module.exports = {
   customer_register,
   customer_login,
   customer_logout,
-  customer_verify_email
+  customer_verify_email,
+  customer_forgot_password,
+  customer_reset_password,
 };

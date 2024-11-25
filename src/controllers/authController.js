@@ -1,3 +1,5 @@
+"use strict";
+
 const adminModel = require("../models/adminModel");
 const ownerModel = require("../models/ownerModel");
 const ownerCustomerModel = require("../models/message/ownerCustomerModel");
@@ -44,8 +46,8 @@ const admin_login = async (req, res) => {
 };
 
 const owner_register = async (req, res) => {
-  const { email, name, password } = req.body;
   try {
+    const { email, name, password } = req.body;
     const existingEmail = await ownerModel.findOne({ email });
     const { error } = userValidate({ email, password });
     if (error) {
@@ -118,6 +120,7 @@ const owner_login = async (req, res) => {
         const token = await createToken({
           id: existingUser._id,
           email: existingUser.email,
+          role: existingUser.role,
         });
         const accessToken = token.accessToken;
         const refreshToken = token.refreshToken;
@@ -281,7 +284,7 @@ const owner_forgot_password = async (req, res) => {
     await sendPasswordResetEmail(
       owner.email,
       `${process.env.CLIENT_URL}/owner-reset-password/${resetToken}`
-    ); //tham so thu 2 la link reset password 'http://localhost:3000/reset-password/${resetToken}'
+    ); //tham so thu 2 la link reset password 'http://localhost:3000/owner-reset-password/${resetToken}'
     responseReturn(res, 200, {
       message: "Password reset link sent to your email!",
     });

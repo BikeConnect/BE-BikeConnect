@@ -1,36 +1,58 @@
 "use strict";
 
-const { post } = require("../models/postModel");
+const post = require("../models/postModel");
+const vehicle = require("../models/vehicleModel");
 const cloudinary = require("../configs/cloudinaryConfig");
 const { removeUndefinedObject, updateNestedObjectParser } = require("../utils");
 const {
   searchPostByCustomer,
   filterPosts,
 } = require("../models/repositories/post.repo");
+const moment = require("moment");
 const { pushNotification } = require("./notification.service");
 
 // Owner
 class PostFactory {
-  static async createPost(payload) {
+  static async createPostWithVehicles(payload) {
     try {
-      const newPost = await post.create(payload);
-      pushNotification({
-        type: "booking",
-        receiverId: 1,
-        senderType: "Owner",
-        senderId: payload.ownerId,
-        options: {
-          name: newPost.name,
-          post_price: newPost.price,
-          post_image: (payload.images && payload.images.length > 0) ? payload.images[0].url : null,
-        },
-        relatedPostId: req.body.postId,
-      })
-        .then((rs) => console.log(rs))
-        .catch(console.error);
-      return newPost;
+      const newPost = await post.create({
+        ownerId: payload.ownerId,
+        quantity: payload.quantity,
+        vehicles: [],
+      });
+
+      const createdVehicles = await Promise.all(
+        payload.vehicles.map(async (vehicleData) => {
+          return vehicle.create({
+            postId: newPost._id,
+            name: vehicleData.name,
+            category: vehicleData.category,
+            brand: vehicleData.brand,
+            price: vehicleData.price,
+            discount: vehicleData.discount,
+            description: vehicleData.description,
+            model: vehicleData.model,
+            images: vehicleData.images || [],
+            rating: vehicleData.rating || 5,
+            address: vehicleData.address,
+            availability_status: "available",
+            license: vehicleData.license,
+            startDate: vehicleData.startDate,
+            endDate: vehicleData.endDate,
+            availableDates: vehicleData.availableDates || [],
+          });
+        })
+      );
+
+      newPost.vehicles = createdVehicles.map((vehicle) => vehicle._id);
+      await newPost.save();
+
+      return await post.findById(newPost._id).populate({
+        path: "vehicles",
+        model: "Vehicle",
+      });
     } catch (error) {
-      throw new Error(`Invalid Post Type: ${error.message}`);
+      throw new Error(`Error creating post with vehicles: ${error.message}`);
     }
   }
 
@@ -42,20 +64,47 @@ class PostFactory {
       }
 
       if (payload.images && payload.images.length > 0) {
-        if (currentPost.images && currentPost.images.length > 0) {
-          for (const image of currentPost.images) {
-            if (image.publicId) {
-              await cloudinary.uploader.destroy(image.publicId);
+        const vehicles = await vehicle.find({ postId });
+        for (const v of vehicles) {
+          if (v.images && v.images.length > 0) {
+            for (const image of v.images) {
+              if (image.publicId) {
+                await cloudinary.uploader.destroy(image.publicId);
+              }
             }
           }
         }
       }
 
-      const updatedPost = await post.findByIdAndUpdate(postId, payload, {
-        new: true,
+      await vehicle.updateMany(
+        { postId },
+        {
+          name: payload.name,
+          category: payload.category,
+          brand: payload.brand,
+          price: payload.price,
+          discount: payload.discount,
+          description: payload.description,
+          model: payload.model,
+          images: payload.images,
+          address: payload.address,
+          startDate: payload.startDate,
+          endDate: payload.endDate,
+          availableDates: payload.availableDates,
+        }
+      );
+
+      // Update post quantity if needed
+      if (payload.quantity !== undefined) {
+        currentPost.quantity = payload.quantity;
+        await currentPost.save();
+      }
+
+      return await post.findById(postId).populate({
+        path: "vehicles",
+        model: "Vehicle",
+        match: { postId },
       });
-      if (!updatedPost) throw new Error("Update Post error!");
-      return updatedPost;
     } catch (error) {
       throw new Error(`Error updating post: ${error.message}`);
     }
@@ -63,23 +112,29 @@ class PostFactory {
 
   static async deletePost(postId) {
     try {
-      const postToDelete = await post.findById(postId);
+      const vehicleToDelete = await vehicle.findById(vehicleId);
 
-      if (!postToDelete) {
-        throw new Error("Post not found");
+      if (!vehicleToDelete) {
+        throw new Error("Vehicle not found");
       }
 
-      if (postToDelete.images && postToDelete.images.length > 0) {
-        for (const image of postToDelete.images) {
+      if (vehicleToDelete.images && vehicleToDelete.images.length > 0) {
+        for (const image of vehicleToDelete.images) {
           if (image.publicId) {
             await cloudinary.uploader.destroy(image.publicId);
           }
         }
       }
 
-      const deletedPost = await post.findByIdAndDelete(postId);
-      if (!deletedPost) throw new Error("Delete Post error!");
-      return deletedPost;
+      const deletedVehicle = await vehicle.findByIdAndDelete(vehicleId);
+      if (!deletedVehicle) throw new Error("Delete Vehicle error!");
+  
+      await post.findByIdAndUpdate(
+        vehicleToDelete.postId,
+        { $pull: { vehicles: vehicleId } }
+      );
+
+      return deletedVehicle;
     } catch (error) {
       throw new Error(`Error deleting post: ${error.message}`);
     }
@@ -108,6 +163,30 @@ class PostFactory {
       throw new Error(`Error filtering posts: ${error.message}`);
     }
   }
+
+  static async getAllVehicles(ownerId) {
+    try {
+      const vehicles = await vehicle
+        .find()
+        .populate({
+          path: "postId",
+          match: { ownerId: ownerId },
+          select: "ownerId quantity",
+          populate: {
+            path: "ownerId",
+            select: "name email currentAddress"
+          }
+        })
+        .sort({ createdAt: -1 });
+  
+      // Filter out vehicles where postId is null (meaning they don't belong to the owner)
+      const filteredVehicles = vehicles.filter(vehicle => vehicle.postId !== null);
+      
+      return filteredVehicles;
+    } catch (error) {
+      throw new Error(`Error fetching vehicles: ${error.message}`);
+    }
+  }
 }
 
 class Post {
@@ -128,6 +207,7 @@ class Post {
     license,
     startDate,
     endDate,
+    availableDates,
   }) {
     this.ownerId = ownerId;
     this.name = name;
@@ -145,6 +225,7 @@ class Post {
     this.license = license;
     this.startDate = startDate;
     this.endDate = endDate;
+    this.availableDates = [];
   }
 
   async create() {

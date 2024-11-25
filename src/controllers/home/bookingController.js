@@ -79,6 +79,7 @@ const get_bookings = async (req, res) => {
   const { startDate, endDate } = req.query;
   const start = moment(startDate, "DD/MM/YYYY").toDate();
   const end = moment(endDate, "DD/MM/YYYY").toDate();
+  console.log("Query dates:", { start, end });
   if (start > end) {
     return responseReturn(res, 400, {
       message: "startDate must not greater than endDate",
@@ -88,11 +89,14 @@ const get_bookings = async (req, res) => {
     const availableVehicles = await vehicleModel
       .find({
         availability_status: "available",
-        startDate: { $lte: start },
-        endDate: { $gte: end },
+        $and: [
+          { startDate: { $lte: end } },
+          { endDate: { $gte: start } }, 
+        ],
       })
       .populate("postId")
       .select("-createdAt -updatedAt -__v");
+
     console.log("availableVehicles:::", availableVehicles);
     const formattedVehicles = availableVehicles.map((vehicle) =>
       formatPostDates(vehicle)

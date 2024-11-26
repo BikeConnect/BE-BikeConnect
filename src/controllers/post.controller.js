@@ -322,6 +322,19 @@ class PostController {
       next(error);
     }
   };
+
+  getAllVehiclesPublic = async (req, res, next) => {
+    try {
+      const vehicles = await PostService.getAllVehiclesPublic();
+  
+      new SuccessResponse({
+        message: "Get all vehicles successfully",
+        metadata: vehicles,
+      }).send(res);
+    } catch (error) {
+      next(error);
+    }
+  };
 }
 
 module.exports = new PostController();

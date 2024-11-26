@@ -187,6 +187,26 @@ class PostFactory {
       throw new Error(`Error fetching vehicles: ${error.message}`);
     }
   }
+
+  static async getAllVehiclesPublic() {
+    try {
+      const vehicles = await vehicle
+        .find()
+        .populate({
+          path: "postId",
+          select: "ownerId quantity",
+          populate: {
+            path: "ownerId",
+            select: "name email currentAddress"
+          }
+        })
+        .sort({ createdAt: -1 });
+  
+      return vehicles;
+    } catch (error) {
+      throw new Error(`Error fetching vehicles: ${error.message}`);
+    }
+  }
 }
 
 class Post {

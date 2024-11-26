@@ -12,6 +12,7 @@ router.get(
   asyncHandler(postController.getListSearchPost)
 );
 router.get("/filter", asyncHandler(postController.filterPosts));
+router.get("/vehicles", asyncHandler(postController.getAllVehiclesPublic));
 
 // Owner
 router.use(verifyToken);

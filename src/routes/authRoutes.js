@@ -17,12 +17,6 @@ router.post("/auth/owner-forgot-password",authController.owner_forgot_password);
 router.post("/auth/owner-reset-password/:token",authController.owner_reset_password);
 
 
-// router.get("/getList",checkAuth, (req, res, next) => {
-//       // console.log(req.headers);
-//   const listUser = [{ email: "abc@gmail.com" }, { email: "def@gmail.com" }];
-//   res.json({ listUser });
-// });
-
-// router.post("/auth/checkRefreshToken", authController.checkRefreshToken);
+router.get("/get-user", verifyToken, authController.getUser);
 
 module.exports = router;

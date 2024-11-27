@@ -2,6 +2,7 @@
 
 const adminModel = require("../models/adminModel");
 const ownerModel = require("../models/ownerModel");
+const customerModel = require("../models/customerModel");
 const ownerCustomerModel = require("../models/message/ownerCustomerModel");
 const userRefreshTokenModel = require("../models/userRefreshTokenModel");
 const { createToken } = require("../utils/createToken");
@@ -65,7 +66,7 @@ const owner_register = async (req, res) => {
         name,
         email,
         password: await bcrypt.hash(password, 10),
-        shopInfo: {},
+        subInfo: {},
         verificationToken,
         verificationTokenExpiresAt: Date.now() + 24 * 60 * 60 * 1000,
       });
@@ -121,6 +122,7 @@ const owner_login = async (req, res) => {
           id: existingUser._id,
           email: existingUser.email,
           role: existingUser.role,
+          phone: existingUser.phone,
         });
         const accessToken = token.accessToken;
         const refreshToken = token.refreshToken;
@@ -338,6 +340,26 @@ const verifyToken = asyncHandler(async (req, res, next) => {
   }
 });
 
+const getUser = async (req, res) => {
+  const { id, role } = req;
+  try {
+    if (role === "owner") {
+      const owner = await ownerModel
+        .findById(id)
+        .select("-__v -createdAt -updatedAt -password");
+      responseReturn(res, 200, { userInfo: owner });
+    } else if (role === "customer") {
+      const customer = await customerModel
+        .findById(id)
+        .select("-__v -createdAt -updatedAt -password");
+      responseReturn(res, 200, { userInfo: customer });
+    }
+  } catch (error) {
+    responseReturn(res, 500, { error: error.message });
+  }
+};
+
+
 module.exports = {
   admin_login,
   owner_register,
@@ -349,4 +371,5 @@ module.exports = {
   owner_reset_password,
   asyncHandler,
   verifyToken,
+  getUser,
 };

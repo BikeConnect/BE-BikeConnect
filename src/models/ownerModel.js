@@ -34,7 +34,7 @@ const ownerSchema = new Schema(
       type: Boolean,
       default: false,
     },
-    shopInfo: {
+    subInfo: {
       type: Object,
       default: {},
     },

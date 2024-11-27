@@ -91,8 +91,6 @@ const customer_login = async (req, res) => {
         const token = await createToken({
           id: existingUser._id,
           role: "customer",
-          email: existingUser.email,
-          name: existingUser.name,
         });
         const accessToken = token.accessToken;
         const refreshToken = token.refreshToken;
@@ -222,6 +220,35 @@ const customer_reset_password = async (req, res) => {
   }
 };
 
+const customer_update_profile = async (req, res) => {
+  const { id } = req;
+  const { name, phone, currentAddress } = req.body;
+  try {
+    const customer = await customerModel.findById(id);
+    if (!customer) {
+      return responseReturn(res, 404, { error: "Customer Not Found" });
+    }
+
+    const updateFields = {};
+    if (name) updateFields.name = name.trim();
+    if (phone) updateFields.phone = phone;
+    if (currentAddress) updateFields.currentAddress = currentAddress.trim();
+
+    const updatedCustomer = await customerModel
+      .findByIdAndUpdate(id, updateFields, {
+        new: true,
+      })
+      .select("-password");
+
+    responseReturn(res, 200, {
+      customer: updatedCustomer,
+      message: "Update Profile Successfully",
+    });
+  } catch (error) {
+    responseReturn(res, 500, { error: error.message });
+  }
+};
+
 module.exports = {
   customer_register,
   customer_login,
@@ -229,4 +256,5 @@ module.exports = {
   customer_verify_email,
   customer_forgot_password,
   customer_reset_password,
+  customer_update_profile,
 };

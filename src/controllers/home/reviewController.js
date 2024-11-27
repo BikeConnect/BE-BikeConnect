@@ -23,7 +23,7 @@ const add_reply = async (req, res) => {
     }
     const review = await reviewModel
       .findById(reviewId)
-      .populate("ownerId", "shopInfo.shopName")
+      .populate("ownerId", "name")
       .populate({
         path: "vehicleId",
         populate: {
@@ -43,7 +43,7 @@ const add_reply = async (req, res) => {
     }
 
     const userName =
-      userRole === "owner" ? review.ownerId.shopInfo.shopName : review.name;
+      userRole === "owner" ? review.ownerId.name : review.name;
 
     const newReply = {
       content,
@@ -96,7 +96,7 @@ const update_reply = async (req, res) => {
     }
     const review = await reviewModel
       .findById(reviewId)
-      .populate("ownerId", "shopInfo.shopName")
+      .populate("ownerId", "name")
       .populate("postId");
 
     if (!review) {
@@ -157,7 +157,7 @@ const delete_reply = async (req, res) => {
 
     const review = await reviewModel
       .findById(reviewId)
-      .populate("ownerId", "shopInfo.shopName")
+      .populate("ownerId", "name")
       .populate("postId");
 
     if (!review) {

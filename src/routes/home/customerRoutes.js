@@ -39,5 +39,6 @@ router.post(
 );
 router.get("/home/customer/get-reviews/:postId", homeController.get_reviews);
 
+router.put("/customer/update-profile", verifyToken,customerController.customer_update_profile);
 
 module.exports = router;

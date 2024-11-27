@@ -18,4 +18,6 @@ router.post("/add-profile-info",verifyToken,ownerController.add_owner_profile);
 
 router.post("/update-booking-request",verifyToken, ownerController.update_booking_status);
 
+router.post("/owner/upload-profile-image", verifyToken, ownerController.upload_owner_profile_image);
+
 module.exports = router;

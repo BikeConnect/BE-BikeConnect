@@ -16,6 +16,7 @@
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
+    "formidable": "^3.5.2",
     "fs-extra": "^11.2.0",
     "gomaps": "^1.0.9",
     "joi": "^17.13.3",

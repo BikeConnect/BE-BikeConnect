@@ -322,6 +322,44 @@ class PostController {
       next(error);
     }
   };
+
+  getAllVehiclesPublic = async (req, res, next) => {
+    try {
+      const vehicles = await PostService.getAllVehiclesPublic();
+  
+      new SuccessResponse({
+        message: "Get all vehicles successfully",
+        metadata: vehicles,
+      }).send(res);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  getVehicleById = async (req, res, next) => {
+    try {
+      const vehicleId = req.params.vehicleId;
+  
+      const vehicleData = await vehicle.findById(vehicleId).populate({
+        path: "postId",
+        select: "ownerId quantity",
+      });
+  
+      if (!vehicleData) {
+        return res.status(404).json({
+          success: false,
+          message: "Vehicle not found",
+        });
+      }
+  
+      new SuccessResponse({
+        message: "Vehicle retrieved successfully",
+        metadata: vehicleData,
+      }).send(res);
+    } catch (error) {
+      next(error);
+    }
+  };
 }
 
 module.exports = new PostController();

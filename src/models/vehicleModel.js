@@ -94,16 +94,29 @@ const vehicleSchema = new Schema(
   }
 );
 
-// Create slug for post
-vehicleSchema.pre("save", function (next) {
+// Create slug for vehicle
+vehicleSchema.pre("save", async function (next) {
   if (this.name) {
-    // Add a random string to make the slug unique
-    const randomString = Math.random().toString(36).substring(2, 7);
-    this.slug = slugify(this.name + '-' + randomString, { 
-      lower: true, 
-      strict: true, 
-      trim: true 
+    let baseSlug = slugify(`${this.name} ${this.brand} ${this.model}`, {
+      lower: true,
+      strict: true,
+      trim: true,
+      replacement: "-",
     });
+
+    let slugExists = await this.constructor.findOne({ slug: baseSlug });
+    let counter = 1;
+
+    while (slugExists) {
+      const newSlug = `${baseSlug}-${counter}`;
+      slugExists = await this.constructor.findOne({ slug: newSlug });
+      if (!slugExists) {
+        baseSlug = newSlug;
+      }
+      counter++;
+    }
+
+    this.slug = baseSlug;
   }
   next();
 });

@@ -13,6 +13,10 @@ router.get(
 );
 router.get("/filter", asyncHandler(postController.filterPosts));
 router.get("/vehicles", asyncHandler(postController.getAllVehiclesPublic));
+router.get(
+  "/vehicle-detail/:vehicleId",
+  asyncHandler(postController.getVehicleById)
+);
 
 // Owner
 router.use(verifyToken);

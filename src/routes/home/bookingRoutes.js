@@ -2,7 +2,7 @@
 
 const bookingController = require("../../controllers/home/bookingController");
 const { verifyToken } = require("../../middlewares/verifyToken");
-const   router = require("express").Router();
+const router = require("express").Router();
 
 
 router.get("/find-booking", bookingController.get_bookings);

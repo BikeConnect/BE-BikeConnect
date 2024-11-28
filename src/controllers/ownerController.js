@@ -28,6 +28,47 @@ const add_owner_profile = async (req, res) => {
   }
 };
 
+
+const owner_update_profile = async (req, res) => {
+  const { id } = req;
+  const { name, phone, district, city, address } = req.body;
+  
+  try {
+    const owner = await ownerModel.findById(id);
+    if (!owner) {
+      return responseReturn(res, 404, { error: "Owner Not Found" });
+    }
+
+    const updateFields = {};
+    if (name) updateFields.name = name.trim();
+    if (phone) updateFields.phone = phone;
+    
+    
+    if (district || city || address) {
+      updateFields.subInfo = {
+        ...owner.subInfo,
+        district: district?.trim() || owner.subInfo?.district,
+        city: city?.trim() || owner.subInfo?.city,
+        address: address?.trim() || owner.subInfo?.address
+      };
+    }
+
+    const updatedOwner = await ownerModel
+      .findByIdAndUpdate(id, updateFields, {
+        new: true, 
+      })
+      .select("-password"); 
+
+    responseReturn(res, 200, {
+      userInfo: updatedOwner,
+      message: "Update Profile Successfully",
+    });
+  } catch (error) {
+    console.log(error.message);
+    responseReturn(res, 500, { error: error.message });
+  }
+};
+
 const get_owner = async (req, res) => {
   const { ownerId } = req.params;
   try {
@@ -120,12 +161,16 @@ const upload_owner_profile_image = async (req, res) => {
     });
 
     const { image } = files;
-    console.log("image::::", image);
+    if (!image || !image[0]) {
+      return responseReturn(res, 400, { error: "No image file uploaded" });
+    }
+
+    const imageFile = image[0];
     try {
-      const result = await cloudinary.uploader.upload(image.PersistentFile.filepath, {
+      const result = await cloudinary.uploader.upload(imageFile.filepath, {
         folder: "bikeConnectProfile",
       });
-      console.log("result::::", result);
+
       if (result) {
         await ownerModel.findByIdAndUpdate(id, {
           image: result.url,
@@ -136,7 +181,6 @@ const upload_owner_profile_image = async (req, res) => {
           userInfo,
         });
       } else {
-        console.log("error::::", error.message);
         responseReturn(res, 404, {
           message: `Profile Image Upload Failed ${error.message}`,
           userInfo,
@@ -150,6 +194,7 @@ const upload_owner_profile_image = async (req, res) => {
 
 module.exports = {
   add_owner_profile,
+  owner_update_profile,
   get_owner,
   get_owner_request,
   get_active_owner,

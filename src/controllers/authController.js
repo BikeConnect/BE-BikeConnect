@@ -120,9 +120,7 @@ const owner_login = async (req, res) => {
       if (match) {
         const token = await createToken({
           id: existingUser._id,
-          email: existingUser.email,
           role: existingUser.role,
-          phone: existingUser.phone,
         });
         const accessToken = token.accessToken;
         const refreshToken = token.refreshToken;

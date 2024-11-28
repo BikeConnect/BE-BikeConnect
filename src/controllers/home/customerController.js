@@ -14,6 +14,8 @@ const {
   sendPasswordResetEmail,
   sendResetSuccessEmail,
 } = require("../../sendmail/email");
+const { formidable } = require("formidable");
+const cloudinary = require("cloudinary").v2;
 
 const customer_register = async (req, res) => {
   try {
@@ -90,7 +92,7 @@ const customer_login = async (req, res) => {
       if (match) {
         const token = await createToken({
           id: existingUser._id,
-          role: "customer",
+          role: existingUser.role,
         });
         const accessToken = token.accessToken;
         const refreshToken = token.refreshToken;
@@ -241,12 +243,56 @@ const customer_update_profile = async (req, res) => {
       .select("-password");
 
     responseReturn(res, 200, {
-      customer: updatedCustomer,
+      userInfo: updatedCustomer,
       message: "Update Profile Successfully",
     });
   } catch (error) {
     responseReturn(res, 500, { error: error.message });
   }
+};
+
+const upload_customer_profile_image = async (req, res) => {
+  const { id } = req;
+  const form = formidable({ multiples: true });
+  form.parse(req, async (error, _, files) => {
+    cloudinary.config({
+      cloud_name: process.env.CLOUD_NAME,
+      api_key: process.env.API_KEY,
+      api_secret: process.env.API_SECRET_KEY,
+      secure: true,
+    });
+
+    const { image } = files;
+    if (!image || !image[0]) {
+      return responseReturn(res, 400, { error: "No image file uploaded" });
+    }
+
+    const imageFile = image[0];
+    try {
+      const result = await cloudinary.uploader.upload(imageFile.filepath, {
+        folder: "bikeConnectProfile",
+      });
+
+      if (result) {
+        await customerModel.findByIdAndUpdate(id, {
+          image: result.url,
+        });
+        const userInfo = await customerModel.findById(id);
+        responseReturn(res, 200, {
+          message: "Profile Image Upload Successfully",
+          userInfo,
+        });
+      } else {
+        responseReturn(res, 404, {
+          message: `Profile Image Upload Failed ${error.message}`,
+          userInfo,
+        });
+      }
+    } catch (error) {
+      console.log("error::::", error.message);
+      responseReturn(res, 500, { error: error.message });
+    }
+  });
 };
 
 module.exports = {
@@ -257,4 +303,5 @@ module.exports = {
   customer_forgot_password,
   customer_reset_password,
   customer_update_profile,
+  upload_customer_profile_image
 };

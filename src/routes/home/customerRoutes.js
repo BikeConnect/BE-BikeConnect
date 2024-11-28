@@ -41,4 +41,6 @@ router.get("/home/customer/get-reviews/:postId", homeController.get_reviews);
 
 router.put("/customer/update-profile", verifyToken,customerController.customer_update_profile);
 
+router.post("/customer/upload-profile-image", verifyToken, customerController.upload_customer_profile_image);
+
 module.exports = router;

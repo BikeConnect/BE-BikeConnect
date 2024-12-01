@@ -2,7 +2,7 @@
 const ownerModel = require("../models/ownerModel");
 const bookingModel = require("../models/bookingModel");
 const { responseReturn } = require("../utils/response");
-const { post } = require("../models/postModel");
+const { vehicle } = require("../models/vehicleModel");
 
 const add_owner_profile = async (req, res) => {
   const { shopName, address, district, city } = req.body;
@@ -93,7 +93,7 @@ const update_booking_status = async (req, res) => {
     await bookingModel.findByIdAndUpdate(bookingId, { status });
     const booking = await bookingModel.findById(bookingId);
     if (booking.status === "accepted") {
-      await post.findByIdAndUpdate(booking.postId, {
+      await vehicle.findByIdAndUpdate(booking.vehicleId, {
         availability_status: "rented",
       });
     }

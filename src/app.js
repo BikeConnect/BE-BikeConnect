@@ -9,7 +9,7 @@ require("dotenv").config();
 
 const authRoutes = require("./routes/authRoutes");
 const customerRoutes = require("./routes/home/customerRoutes");
-const postOwer = require("./routes/post");
+const vehicleRoutes = require("./routes/vehicle");
 const portal = require("./routes/portal");
 const ownerRoutes = require("./routes/ownerRoutes");
 const contractRoutes = require("./routes/home/contractRoutes");
@@ -38,7 +38,8 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 dbConnect();
 
-app.use("/api/post", postOwer);
+// Routes
+app.use("/api/vehicles", vehicleRoutes);
 app.use("/api", authRoutes);
 app.use("/api", ownerRoutes);
 app.use("/api", customerRoutes);

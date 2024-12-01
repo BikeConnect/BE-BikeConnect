@@ -140,10 +140,48 @@ const createNotification = async (data) => {
   return notification;
 };
 
+const getAllNotifications = async ({ sort = 'desc' }) => {
+  const sortOrder = sort === 'desc' ? -1 : 1;
+
+  const notifications = await NOTI.aggregate([
+    {
+      $sort: { createdAt: sortOrder }
+    },
+    {
+      $lookup: {
+        from: 'contracts',
+        localField: 'contractId',
+        foreignField: '_id',
+        as: 'contract'
+      }
+    },
+    {
+      $project: {
+        noti_type: 1,
+        noti_senderId: 1,
+        senderType: 1,
+        noti_receiverId: 1,
+        noti_content: 1,
+        noti_status: 1,
+        isRead: 1,
+        actionType: 1,
+        createdAt: 1,
+        contract: { $arrayElemAt: ['$contract', 0] }
+      }
+    }
+  ]);
+
+  return {
+    notifications,
+    total: notifications.length
+  };
+};
+
 module.exports = {
   pushNotification,
   listNotiByCus,
   markAsRead,
   getUnreadCount,
   createNotification,
+  getAllNotifications,
 };

@@ -8,28 +8,14 @@ const { pushNotification } = require("../../services/notification.service");
 const { convertToObjectIdMongodb } = require("../../utils");
 
 const customer_submit_review = async (req, res) => {
-  const {
-    vehicleId,
-    rating,
-    review,
-    name,
-    ownerId,
-    customerId,
-    userId,
-    userName,
-    userType,
-  } = req.body;
+  const { vehicleId, rating, review, name, ownerId, customerId } = req.body;
   try {
-    const vehicle = await vehicleModel.findById(vehicleId);
-    if (!vehicle)
+    const vehicleData = await vehicleModel.findById(vehicleId);
+    if (!vehicleData)
       return responseReturn(res, 404, { message: "Vehicle not found" });
-
-    const postId = vehicle.postId;
 
     await reviewModel.create({
       vehicleId,
-      postId,
-      name,
       rating,
       review,
       replies: [],
@@ -48,10 +34,10 @@ const customer_submit_review = async (req, res) => {
     }
     let postRating = 0;
     if (reviews.length !== 0) {
-      postRating = (ratings / reviews.length).toFixed(1);
+      vehicleRating = (ratings / reviews.length).toFixed(1);
     }
-    await vehicleModel.findByIdAndUpdate(postId, {
-      rating: postRating,
+    await vehicleModel.findByIdAndUpdate(vehicleId, {
+      rating: Number(vehicleRating.toFixed(1))
     });
 
     let senderType = "owner";
@@ -69,8 +55,7 @@ const customer_submit_review = async (req, res) => {
         review_rating: rating,
         review_name: name,
         review_content: review,
-        vehicleId: vehicleId, 
-        postId: postId, 
+        vehicleId: vehicleId,
       },
     });
     responseReturn(res, 201, { message: "Review Added Successfully" });

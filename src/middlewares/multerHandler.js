@@ -1,7 +1,6 @@
 const multer = require("multer");
 const { CloudinaryStorage } = require("multer-storage-cloudinary");
 const cloudinary = require("../configs/cloudinaryConfig");
-const PostService = require("../services/post.service");
 
 const handleMulterError = (err, req, res, next) => {
   if (err instanceof multer.MulterError) {
@@ -38,20 +37,6 @@ const handleMulterError = (err, req, res, next) => {
 
 const handleImageUpload = async (req, res, next) => {
   try {
-    console.log("testttttt")
-    const uploadFields = [
-      { name: 'images', maxCount: 10 },
-      { name: 'quantity', maxCount: 1 },
-      { name: 'vehicles', maxCount: 1 }
-    ];
-    
-    for (let i = 0; i < 10; i++) {
-      uploadFields.push({
-        name: `vehicle${i}_images`,
-        maxCount: 10
-      });
-    }
-
     const storage = new CloudinaryStorage({
       cloudinary: cloudinary,
       params: {
@@ -61,7 +46,13 @@ const handleImageUpload = async (req, res, next) => {
       },
     });
 
-    const upload = multer({ storage: storage }).fields(uploadFields);
+    const upload = multer({ 
+      storage: storage,
+      limits: {
+        fileSize: 5 * 1024 * 1024,
+        files: 10
+      }
+    }).array('images', 10);
 
     upload(req, res, function(err) {
       if (err) {
@@ -75,5 +66,4 @@ const handleImageUpload = async (req, res, next) => {
     next(error);
   }
 };
-
 module.exports = { handleImageUpload };

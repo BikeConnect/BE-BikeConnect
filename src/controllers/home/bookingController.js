@@ -3,7 +3,7 @@
 const Contract = require("../../models/contractModel");
 const bookingModel = require("../../models/bookingModel");
 const contractModel = require("../../models/contractModel");
-const post = require("../../models/postModel");
+const vehicle = require("../../models/vehicleModel");
 const vehicleModel = require("../../models/vehicleModel");
 const notificationService = require("../../services/notification.service");
 const { convertToObjectIdMongodb } = require("../../utils");
@@ -16,9 +16,8 @@ const customer_submit_booking = async (req, res) => {
     const { vehicleId, startDate, endDate } = req.body;
     const customerId = req.id;
 
-    const vehicleData = await vehicleModel
-      .findById(vehicleId)
-      .populate("postId");
+    const vehicleData = await vehicleModel.findById(vehicleId);
+
     if (!vehicleData)
       return responseReturn(res, 404, { error: "Vehicle Not Found" });
 
@@ -36,9 +35,8 @@ const customer_submit_booking = async (req, res) => {
 
     const contract = await contractModel.create({
       customerId,
-      ownerId: convertToObjectIdMongodb(vehicleData.postId.ownerId),
+      ownerId: convertToObjectIdMongodb(vehicleData.ownerId),
       vehicleId,
-      postId: vehicleData.postId._id,
       startDate,
       endDate,
       totalAmount: totalPrice,
@@ -58,7 +56,7 @@ const customer_submit_booking = async (req, res) => {
       senderId: customerId,
       senderType: "customer",
       link: contract._id,
-      receiverId: convertToObjectIdMongodb(vehicleData.postId.ownerId),
+      receiverId: convertToObjectIdMongodb(vehicleData.ownerId),
       content: "Bạn có yêu cầu thuê xe mới, vui lòng xác nhận trong vòng 24h",
       contractId: contract._id,
       actionType: "CONTRACT_REQUEST",
@@ -89,12 +87,9 @@ const get_bookings = async (req, res) => {
     const availableVehicles = await vehicleModel
       .find({
         availability_status: "available",
-        $and: [
-          { startDate: { $lte: end } },
-          { endDate: { $gte: start } }, 
-        ],
+        $and: [{ startDate: { $lte: end } }, { endDate: { $gte: start } }],
       })
-      .populate("postId")
+      .populate("vehicleId")
       .select("-createdAt -updatedAt -__v");
 
     console.log("availableVehicles:::", availableVehicles);

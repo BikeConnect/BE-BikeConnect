@@ -1,7 +1,7 @@
 const ownerModel = require("../ownerModel");
-const { post } = require("../postModel");
+const vehicle = require("../vehicleModel");
 
-const searchPostByCustomer = async ({ keySearch }) => {
+const searchVehiclesByCustomer = async ({ keySearch }) => {
   try {
     if (!keySearch) {
       return [];
@@ -22,26 +22,26 @@ const searchPostByCustomer = async ({ keySearch }) => {
       return [];
     }
 
-    const ownerIds = owners.map(owner => owner._id);
+    const ownerIds = owners.map((owner) => owner._id);
 
-    const result = await post
+    const result = await vehicle
       .find({
         ownerId: { $in: ownerIds },
-        availability_status: "available"
+        availability_status: "available",
       })
       .populate({
         path: "ownerId",
-        select: "name currentAddress phone"
+        select: "name currentAddress phone",
       })
       .lean();
 
     return result;
   } catch (error) {
-    throw new Error(`Error searching posts by address: ${error.message}`);
+    throw new Error(`Error searching vehicles by address: ${error.message}`);
   }
 };
 
-const filterPosts = async (filterOptions) => {
+const filterVehicles = async (filterOptions) => {
   try {
     let query = {};
 
@@ -51,7 +51,6 @@ const filterPosts = async (filterOptions) => {
         query.price.$gte = Number(filterOptions.minPrice);
       }
       if (filterOptions.maxPrice) {
-        query.price.$gte = 0;
         query.price.$lte = Number(filterOptions.maxPrice);
       }
     }
@@ -72,19 +71,7 @@ const filterPosts = async (filterOptions) => {
     }
 
     if (filterOptions.rating) {
-      const ratingValue = Number(filterOptions.rating);
-      if (ratingValue >= 1 && ratingValue <= 5) {
-        query.rating = ratingValue;
-      }
-    } else if (filterOptions.minRating && filterOptions.maxRating) {
-      query.rating = {
-        $gte: Number(filterOptions.minRating),
-        $lte: Number(filterOptions.maxRating),
-      };
-    } else if (filterOptions.minRating) {
-      query.rating = { $gte: Number(filterOptions.minRating) };
-    } else if (filterOptions.maxRating) {
-      query.rating = { $lte: Number(filterOptions.maxRating) };
+      query.rating = Number(filterOptions.rating);
     }
 
     let sortOptions = {};
@@ -106,22 +93,13 @@ const filterPosts = async (filterOptions) => {
           sortOptions.createdAt = -1;
           break;
         default:
-          sortOptions.price = 1;
+          sortOptions.createdAt = -1;
       }
-    } else {
-      sortOptions.price = 1;
     }
 
-    const posts = await post.find(query).sort(sortOptions).lean();
+    const vehicles = await vehicle.find(query).sort(sortOptions).lean();
 
-    if (!posts || posts.length === 0) {
-      return {
-        posts: [],
-        priceRange: null,
-      };
-    }
-
-    const priceStats = await post.aggregate([
+    const priceStats = await vehicle.aggregate([
       {
         $group: {
           _id: null,
@@ -132,21 +110,15 @@ const filterPosts = async (filterOptions) => {
     ]);
 
     return {
-      posts,
-      priceRange:
-        priceStats.length > 0
-          ? {
-              minPrice: priceStats[0].minPrice,
-              maxPrice: priceStats[0].maxPrice,
-            }
-          : null,
+      vehicles,
+      priceRange: priceStats[0] || null,
     };
   } catch (error) {
-    throw new Error(`Error filtering posts: ${error.message}`);
+    throw new Error(`Error filtering vehicles: ${error.message}`);
   }
 };
 
 module.exports = {
-  searchPostByCustomer,
-  filterPosts,
+  searchVehiclesByCustomer,
+  filterVehicles,
 };

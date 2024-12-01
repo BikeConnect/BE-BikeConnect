@@ -6,6 +6,7 @@ const { post } = require("../models/postModel");
 const { formidable } = require("formidable");
 const cloudinary = require("cloudinary").v2;
 require("dotenv").config();
+const { vehicle } = require("../models/vehicleModel");
 
 const add_owner_profile = async (req, res) => {
   const { address, district, city } = req.body;
@@ -135,7 +136,7 @@ const update_booking_status = async (req, res) => {
     await bookingModel.findByIdAndUpdate(bookingId, { status });
     const booking = await bookingModel.findById(bookingId);
     if (booking.status === "accepted") {
-      await post.findByIdAndUpdate(booking.postId, {
+      await vehicle.findByIdAndUpdate(booking.vehicleId, {
         availability_status: "rented",
       });
     }

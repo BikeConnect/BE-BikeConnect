@@ -6,22 +6,14 @@ const COLLECTION_NAME = "Vehicles";
 
 const vehicleSchema = new Schema(
   {
-    postId: {
+    ownerId: {
       type: Schema.Types.ObjectId,
-      ref: "Post",
-    },
-    name: {
-      type: String,
-      required: true,
+      ref: "Owner",
     },
     slug: {
       type: String,
       unique: true,
       sparse: true,
-    },
-    category: {
-      type: String,
-      required: true,
     },
     brand: {
       type: String,
@@ -96,28 +88,28 @@ const vehicleSchema = new Schema(
 
 // Create slug for vehicle
 vehicleSchema.pre("save", async function (next) {
-  if (this.name) {
-    let baseSlug = slugify(`${this.name} ${this.brand} ${this.model}`, {
-      lower: true,
-      strict: true,
-      trim: true,
-      replacement: "-",
-    });
+  // Create base slug from brand and model
+  let baseSlug = slugify(`${this.brand} ${this.model}`, {
+    lower: true,
+    strict: true,
+    trim: true,
+    replacement: "-",
+  });
 
-    let slugExists = await this.constructor.findOne({ slug: baseSlug });
-    let counter = 1;
+  // Check if slug exists and add counter if needed
+  let slugExists = await this.constructor.findOne({ slug: baseSlug });
+  let counter = 1;
 
-    while (slugExists) {
-      const newSlug = `${baseSlug}-${counter}`;
-      slugExists = await this.constructor.findOne({ slug: newSlug });
-      if (!slugExists) {
-        baseSlug = newSlug;
-      }
-      counter++;
+  while (slugExists) {
+    const newSlug = `${baseSlug}-${counter}`;
+    slugExists = await this.constructor.findOne({ slug: newSlug });
+    if (!slugExists) {
+      baseSlug = newSlug;
     }
-
-    this.slug = baseSlug;
+    counter++;
   }
+
+  this.slug = baseSlug;
   next();
 });
 

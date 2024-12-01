@@ -158,7 +158,6 @@ class VehicleController {
       const { vehicleId } = req.params;
       const ownerId = req.ownerId;
 
-      // Kiểm tra vehicle tồn tại và quyền trong một query
       const vehicleToDelete = await vehicle.findOne({
         _id: vehicleId,
         ownerId: ownerId,
@@ -170,7 +169,6 @@ class VehicleController {
         });
       }
 
-      // Xóa ảnh từ cloudinary
       if (vehicleToDelete.images?.length > 0) {
         await Promise.all(
           vehicleToDelete.images
@@ -179,7 +177,6 @@ class VehicleController {
         );
       }
 
-      // Xóa vehicle
       await vehicle.findByIdAndDelete(vehicleId);
 
       new SuccessResponse({
@@ -240,7 +237,7 @@ class VehicleController {
     }
   };
 
-  getPostsSortedByDistance = async (req, res, next) => {
+  getVehiclesSortedByDistance = async (req, res, next) => {
     const { address } = req.query;
 
     if (!address) {
@@ -248,14 +245,7 @@ class VehicleController {
     }
 
     try {
-      const vehicles = await vehicle.find().populate({
-        path: "postId",
-        select: "ownerId quantity",
-        populate: {
-          path: "ownerId",
-          select: "name email",
-        },
-      });
+      const vehicles = await vehicle.find().populate("ownerId", "name email currentAddress");
 
       const distances = await Promise.all(
         vehicles.map(async (vehicle) => {
@@ -283,12 +273,11 @@ class VehicleController {
     }
   };
 
-  filterPosts = async (req, res, next) => {
+  filterVehicles = async (req, res, next) => {
     try {
       const filterOptions = {
         minPrice: req.query.minPrice,
         maxPrice: req.query.maxPrice,
-        category: req.query.category,
         brand: req.query.brand,
         availability_status: req.query.availability_status,
         rating: req.query.rating,
@@ -297,20 +286,38 @@ class VehicleController {
         sortBy: req.query.sortBy,
       };
 
+      const filteredVehicles = await VehicleService.filterVehicles(
+        filterOptions
+      );
+
       new SuccessResponse({
-        message: "Filter posts success!",
-        metadata: await PostService.filterPosts(filterOptions),
+        message: "Filter vehicles success!",
+        metadata: filteredVehicles,
       }).send(res);
     } catch (error) {
       next(error);
     }
   };
 
-  getListSearchPost = async (req, res, next) => {
-    new SuccessResponse({
-      message: "Get list getListSearchPost success!",
-      metadata: await PostService.getListSearchPost(req.params),
-    }).send(res);
+  getListSearchVehicles = async (req, res, next) => {
+    try {
+      const { keySearch } = req.query;
+      
+      if (!keySearch) {
+        return res.status(400).json({
+          message: "Search key is required"
+        });
+      }
+  
+      const searchResults = await VehicleService.getListSearchVehicles({ keySearch });
+  
+      new SuccessResponse({
+        message: "Search vehicles success!",
+        metadata: searchResults,
+      }).send(res);
+    } catch (error) {
+      next(error);
+    }
   };
 }
 

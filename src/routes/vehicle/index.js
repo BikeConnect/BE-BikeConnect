@@ -7,35 +7,41 @@ const { verifyToken } = require("../../middlewares/verifyToken");
 const { handleImageUpload } = require("../../middlewares/multerHandler");
 const vehicleController = require("../../controllers/vehicle.controller");
 
-// router.get(
-//   "/search/:keySearch",
-//   asyncHandler(postController.getListSearchPost)
-// );
-// router.get("/filter", asyncHandler(postController.filterPosts));
-// router.get("/vehicles", asyncHandler(vehicleController.getAllVehiclesPublic));
-// router.get(
-//   "/:vehicleId",
-//   asyncHandler(vehicleController.getVehicleById)
-// );
+router.get("/search", vehicleController.getListSearchVehicles);
+router.get("/filter", asyncHandler(vehicleController.filterVehicles));
+router.get(
+  "/owner-list-vehicles",
+  asyncHandler(vehicleController.getAllVehiclesPublic)
+);
+router.get(
+  "/vehicle-detail/:vehicleId",
+  asyncHandler(vehicleController.getVehicleById)
+);
 
 // Owner
 router.use(verifyToken);
+
 router.post(
   "/create-vehicle",
   verifyToken,
   handleImageUpload,
   vehicleController.createVehicle
 );
+
 router.patch(
   "/update-vehicle/:vehicleId",
   handleImageUpload,
   asyncHandler(vehicleController.updateVehicle)
 );
+
 router.delete(
   "/delete-vehicle/:vehicleId",
   verifyToken,
   asyncHandler(vehicleController.deleteVehicle)
 );
 
-router.get("/owner-vehicles", asyncHandler(vehicleController.getOwnerVehicles));
+router.get(
+  "/owner-list-vehicles",
+  asyncHandler(vehicleController.getOwnerVehicles)
+);
 module.exports = router;

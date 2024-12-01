@@ -11,7 +11,7 @@ const vehicleController = require("../../controllers/vehicle.controller");
 router.use(verifyToken);
 
 router.get("/sorted-by-distance", async (req, res) => {
-  await vehicleController.getPostsSortedByDistance(req, res);
+  await vehicleController.getVehiclesSortedByDistance(req, res);
 });
 
 router.get(

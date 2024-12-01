@@ -18,7 +18,7 @@ const addCustomer = (customerId, socketId, userInfo) => {
   const checkCustomer = allCustomers.some(
     (customer) => customer.customerId === customerId
   );
-  if (checkCustomer) {
+  if (!checkCustomer) {
     allCustomers.push({ customerId, socketId, userInfo });
   }
 };
@@ -32,19 +32,55 @@ const addOwner = (ownerId, socketId, userInfo) => {
 
 const findCustomer = (customerId) => {
   return allCustomers.find((customer) => customer.customerId === customerId);
-}
+};
 
 const findOwner = (ownerId) => {
   return allOwners.find((owner) => owner.ownerId === ownerId);
-} 
+};
 
 const remove = (socketId) => {
-  allCustomers = allCustomers.filter((customer) => customer.socketId !== socketId);
+  allCustomers = allCustomers.filter(
+    (customer) => customer.socketId !== socketId
+  );
   allOwners = allOwners.filter((owner) => owner.socketId !== socketId);
-}
+};
 
 io.on("connection", (soc) => {
   console.log("Socket Server Is Running...");
+
+  // add customer
+  soc.on("add_user", (customerId, userInfo) => {
+    addCustomer(customerId, soc.id, userInfo);
+    io.emit("active_owner", allOwners);
+  });
+  // add owner
+  soc.on("add_owner", (ownerId, userInfo) => {
+    addOwner(ownerId, soc.id, userInfo);
+    io.emit("active_owner", allOwners);
+  });
+
+  //gui message tu phia owner
+  soc.on("send_owner_message", (msg) => {
+    const customer = findCustomer(msg.receiverId);
+    if (customer !== undefined) {
+      soc.to(customer.socketId).emit("owner_message", msg);
+    }
+  });
+
+  // gui message tu phia customer
+  soc.on("send_customer_message", (msg) => {
+    const owner = findOwner(msg.receiverId);
+    if (owner !== undefined) {
+      soc.to(owner.socketId).emit("customer_message", msg);
+    }
+  });
+
+  soc.on("disconnect", () => {
+    console.log("User disconnected");
+    remove(soc.id);
+    io.emit("active_owner", allOwners);
+  });
+
 });
 
 const server = serverIO.listen(port, () => {

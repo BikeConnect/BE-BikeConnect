@@ -38,6 +38,7 @@ const handleMulterError = (err, req, res, next) => {
 
 const handleImageUpload = async (req, res, next) => {
   try {
+    console.log("testttttt")
     const uploadFields = [
       { name: 'images', maxCount: 10 },
       { name: 'quantity', maxCount: 1 },
@@ -64,11 +65,13 @@ const handleImageUpload = async (req, res, next) => {
 
     upload(req, res, function(err) {
       if (err) {
+        console.log(err.message)
         return handleMulterError(err, req, res, next);
       }
       next();
     });
   } catch (error) {
+    console.log(error.message);
     next(error);
   }
 };

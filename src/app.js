@@ -15,7 +15,7 @@ const ownerRoutes = require("./routes/ownerRoutes");
 const contractRoutes = require("./routes/home/contractRoutes");
 const reviewRoutes = require("./routes/home/reviewRoutes");
 const bookingRoutes = require("./routes/home/bookingRoutes");
-
+const chatRoutes = require("./routes/home/chatRoutes");
 
 app.use(morgan("dev"));
 app.use(compression());
@@ -45,6 +45,7 @@ app.use("/api", customerRoutes);
 app.use("/api", reviewRoutes);
 app.use("/api", contractRoutes);
 app.use("/api", bookingRoutes);
+app.use("/api", chatRoutes);
 app.use("/api", portal);
 
 app.use((req, res, next) => {

@@ -9,10 +9,13 @@ const reviewSchema = new Schema(
       required: true,
       ref: "Vehicle",
     },
-    postId: {
+    ownerId: {
       type: Schema.ObjectId,
-      required: true,
-      ref: "Post",
+      ref: "Owner",  
+    },
+    customerId: {
+      type: Schema.ObjectId,
+      ref: "customers",  
     },
     name: {
       type: String,

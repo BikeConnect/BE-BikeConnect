@@ -5,16 +5,17 @@ const { responseReturn } = require("../../utils/response");
 const notificationService = require("../../services/notification.service");
 const moment = require("moment");
 const { findReplyIndex } = require("../../helpers/findIndex");
+const { convertToObjectIdMongodb } = require("../../utils");
 
 const add_reply = async (req, res) => {
   const { reviewId } = req.params;
   const { content, userType, ownerId, customerId } = req.body;
   const userId = userType === "owner" ? ownerId : customerId;
   const userRole = req.role;
-  console.log("userType:::", userType);
-  console.log("userId:::", userId);
+  // console.log("userType:::", userType);
+  // console.log("userId:::", userId);
 
-  console.log(userRole);
+  // console.log(userRole);
   try {
     if (userType !== userRole) {
       return responseReturn(res, 403, {
@@ -23,19 +24,22 @@ const add_reply = async (req, res) => {
     }
     const review = await reviewModel
       .findById(reviewId)
-      .populate("ownerId", "name")
       .populate({
         path: "vehicleId",
         populate: {
-          path: "postId",
-          select: "ownerId",
+          path: "ownerId",
+          select: "name", 
         },
+      })
+      .populate({
+        path: "customerId",
+        select: "name", 
       });
 
     if (!review) return responseReturn(res, 404, { error: "Review not found" });
 
     if (userRole === "owner") {
-      if (review.vehicleId.postId.ownerId.toString() !== userId) {
+      if (review.vehicleId.ownerId._id.toString() !== userId) {
         return responseReturn(res, 403, {
           message: "Only the owner of this post can reply to reviews",
         });
@@ -43,8 +47,10 @@ const add_reply = async (req, res) => {
     }
 
     const userName =
-      userRole === "owner" ? review.ownerId.name : review.name;
-
+      userRole === "owner"
+        ? review.vehicleId.ownerId.name
+        : review.name;
+    console.log("userName:::", userName);
     const newReply = {
       content,
       date: moment().format("LL"),
@@ -52,28 +58,44 @@ const add_reply = async (req, res) => {
       userType: userRole,
       userName,
     };
-
     review.replies.push(newReply);
     await review.save();
-
     const receiverId =
-      userRole === "owner" ? review.customerId : review.ownerId;
-    await notificationService.createNotification({
-      type: "review",
-      senderId: userId,
+      userRole === "owner" ? review.customerId._id : review.vehicleId.ownerId._id;
+    console.log("receiverId:::", receiverId);
+    // await notificationService.createNotification({
+    //   type: "review",
+    //   senderId: userId,
+    //   senderType: userRole,
+    //   link: review.vehicleId._id,
+    //   receiverId: receiverId,
+    //   content: `${userName} đã trả lời đánh giá của bạn`,
+    //   options: {
+    //     reply_content: content,
+    //     sender_name: userName,
+    //     review_id: reviewId,
+    //     vehicle_id: review.vehicleId._id,
+    //   },
+    //   actionType: "REVIEW_REPLIED",
+    // });
+    const notificationData = {
+      noti_type: "review",
+      noti_senderId: userId,
       senderType: userRole,
-      link: review.vehicleId._id,
-      receiverId: receiverId,
-      content: `${userName} đã trả lời đánh giá của bạn`,
-      options: {
+      noti_link: review.vehicleId._id,
+      noti_receiverId: receiverId,
+      noti_content: `${userName} đã trả lời đánh giá của bạn`,
+      noti_options: {
         reply_content: content,
         sender_name: userName,
         review_id: reviewId,
-        vehicle_id: review.vehicleId._id,
-        post_id: review.vehicleId.postId._id,
+        vehicle_id: review.vehicleId,
       },
       actionType: "REVIEW_REPLIED",
-    });
+    };
+    const newNotification = await notificationService.createNotification(
+      notificationData
+    );
 
     responseReturn(res, 201, { message: "Reply added successfully" });
   } catch (error) {
@@ -96,15 +118,14 @@ const update_reply = async (req, res) => {
     }
     const review = await reviewModel
       .findById(reviewId)
-      .populate("ownerId", "name")
-      .populate("postId");
+      .populate("ownerId", "name");
 
     if (!review) {
       return responseReturn(res, 404, { error: "Review not found" });
     }
 
     if (userRole === "owner") {
-      if (review.postId.ownerId.toString() !== userId) {
+      if (review.ownerId.toString() !== userId) {
         return responseReturn(res, 403, {
           message: "Only the owner of this post can update their to replies",
         });
@@ -157,15 +178,14 @@ const delete_reply = async (req, res) => {
 
     const review = await reviewModel
       .findById(reviewId)
-      .populate("ownerId", "name")
-      .populate("postId");
+      .populate("ownerId", "name");
 
     if (!review) {
       return responseReturn(res, 404, { error: "Review not found" });
     }
 
     if (userRole === "owner") {
-      if (review.postId.ownerId.toString() !== userId) {
+      if (review.ownerId.toString() !== userId) {
         return responseReturn(res, 403, {
           message: "Only the owner of this post can update their to replies",
         });

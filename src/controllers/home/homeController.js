@@ -4,27 +4,24 @@ const reviewModel = require("../../models/reviewModel");
 const vehicleModel = require("../../models/vehicleModel");
 const { responseReturn } = require("../../utils/response");
 const moment = require("moment");
-const { pushNotification } = require("../../services/notification.service");
 const { convertToObjectIdMongodb } = require("../../utils");
+const notificationService = require("../../services/notification.service");
 
 const customer_submit_review = async (req, res) => {
-  const { vehicleId, rating, review, name, ownerId, customerId } = req.body;
+  const { vehicleId, rating, review, name } = req.body;
   try {
     const vehicleData = await vehicleModel.findById(vehicleId);
-    if (!vehicleData)
+    if (!vehicleData) {
       return responseReturn(res, 404, { message: "Vehicle not found" });
+    }
 
     await reviewModel.create({
       vehicleId,
+      name,
       rating,
       review,
       replies: [],
       date: moment().format("LL"),
-      customerId,
-      ownerId,
-      userType,
-      userId,
-      userName,
     });
 
     let ratings = 0;
@@ -32,35 +29,34 @@ const customer_submit_review = async (req, res) => {
     for (let i = 0; i < reviews.length; i++) {
       ratings += reviews[i].rating;
     }
-    let postRating = 0;
+    let vehicleRating = 0;
     if (reviews.length !== 0) {
       vehicleRating = (ratings / reviews.length).toFixed(1);
     }
-    await vehicleModel.findByIdAndUpdate(vehicleId, {
-      rating: Number(vehicleRating.toFixed(1))
-    });
+    await vehicleModel.findByIdAndUpdate(vehicleId, { rating: vehicleRating });
 
-    let senderType = "owner";
-    const senderId =
-      senderType === "customers" ? req.body.customerId : req.body.ownerId;
-
-    await notificationService.createNotification({
-      type: "review",
-      senderId: customerId,
+    const notificationData = {
+      noti_type: "review",
+      noti_senderId: req.id,
       senderType: "customer",
-      link: vehicleId, // Có thể dùng vehicleId hoặc postId dựa vào UI
-      receiverId: ownerId,
-      content: `${name} đã đánh giá xe của bạn ${rating} sao`,
-      options: {
+      noti_link: vehicleId,
+      noti_receiverId: convertToObjectIdMongodb(vehicleData.ownerId),
+      noti_content: `${name} đã đánh giá xe của bạn ${rating} sao`,
+      noti_options: {
         review_rating: rating,
         review_name: name,
         review_content: review,
         vehicleId: vehicleId,
       },
-    });
-    responseReturn(res, 201, { message: "Review Added Successfully" });
+    };
+    const newNotification = await notificationService.createNotification(
+      notificationData
+    );
+
+    return responseReturn(res, 201, { message: "Review Added Successfully" });
   } catch (error) {
     console.log(error.message);
+    return responseReturn(res, 500, { message: error.message });
   }
 };
 

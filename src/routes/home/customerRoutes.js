@@ -34,10 +34,10 @@ router.post(
 );
 
 router.post(
-  "/home/customer/submit-review",
+  "/home/customer/submit-review",verifyToken,
   homeController.customer_submit_review
 );
-router.get("/home/customer/get-reviews/:postId", homeController.get_reviews);
+router.get("/home/customer/get-reviews/:vehicleId", homeController.get_reviews);
 
 router.put("/customer/update-profile", verifyToken,customerController.customer_update_profile);
 

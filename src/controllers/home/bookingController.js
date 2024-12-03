@@ -3,7 +3,6 @@
 const Contract = require("../../models/contractModel");
 const bookingModel = require("../../models/bookingModel");
 const contractModel = require("../../models/contractModel");
-const vehicle = require("../../models/vehicleModel");
 const vehicleModel = require("../../models/vehicleModel");
 const notificationService = require("../../services/notification.service");
 const { convertToObjectIdMongodb } = require("../../utils");

@@ -12,11 +12,6 @@ const contractSchema = new Schema(
       required: true,
       ref: "customers",
     },
-    postId: {
-      type: Schema.Types.ObjectId,
-      ref: "Post",
-      required: true,
-    },
     ownerId: {
       type: Schema.Types.ObjectId,
       ref: "Owner",

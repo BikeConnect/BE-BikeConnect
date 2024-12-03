@@ -2,7 +2,6 @@
 const ownerModel = require("../models/ownerModel");
 const bookingModel = require("../models/bookingModel");
 const { responseReturn } = require("../utils/response");
-const { post } = require("../models/postModel");
 const { formidable } = require("formidable");
 const cloudinary = require("cloudinary").v2;
 require("dotenv").config();

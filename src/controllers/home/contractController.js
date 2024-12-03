@@ -168,7 +168,6 @@ const confirmContract = async (req, res) => {
         contract.status = "active";
         const booking = await bookingModel.create({
           customerId: contract.customerId,
-          postId: contract.postId,
           contractId: contract._id,
           vehicleId: contract.vehicleId,
           startDate: contract.startDate,
@@ -311,7 +310,7 @@ cron.schedule("1 0 * * *", async (req, res) => {
         { status: "completed" }
       );
 
-      await vehicleModel.findByIdAndUpdate(contract.postId, {
+      await vehicleModel.findByIdAndUpdate(contract.vehicleId, {
         availability_status: "available",
       });
 

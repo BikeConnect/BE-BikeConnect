@@ -10,7 +10,7 @@ const vehicleController = require("../../controllers/vehicle.controller");
 router.get("/search", vehicleController.getListSearchVehicles);
 router.get("/filter", asyncHandler(vehicleController.filterVehicles));
 router.get(
-  "/owner-list-vehicles",
+  "/list-vehicles",
   asyncHandler(vehicleController.getAllVehiclesPublic)
 );
 router.get(

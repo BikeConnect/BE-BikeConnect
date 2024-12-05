@@ -53,7 +53,6 @@ const handleImageUpload = async (req, res, next) => {
         files: 10
       }
     }).array('images', 10);
-
     upload(req, res, function(err) {
       if (err) {
         console.log(err.message)

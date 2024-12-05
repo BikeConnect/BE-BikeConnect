@@ -50,16 +50,21 @@ const customer_submit_booking = async (req, res) => {
       expiryTime: new Date(Date.now() + 24 * 60 * 60 * 1000),
     });
 
-    await notificationService.createNotification({
-      type: "contract",
-      senderId: customerId,
+    const notificationData = {
+      noti_type: "contract",
+      noti_senderId: customerId,
       senderType: "customer",
-      link: contract._id,
-      receiverId: convertToObjectIdMongodb(vehicleData.ownerId),
-      content: "Bạn có yêu cầu thuê xe mới, vui lòng xác nhận trong vòng 24h",
+      noti_link: contract._id,
+      noti_receiverId: convertToObjectIdMongodb(vehicleData.ownerId),
+      noti_content:
+        "Bạn có yêu cầu thuê xe mới, vui lòng xác nhận trong vòng 24h",
+      noti_options: {},
       contractId: contract._id,
-      actionType: "CONTRACT_REQUEST",
-    });
+      actionType: "REVIEW_REPLIED",
+    };
+    const newNotification = await notificationService.createNotification(
+      notificationData
+    );
 
     responseReturn(res, 201, {
       success: true,
@@ -134,61 +139,8 @@ const check_specific_booking = async (req, res) => {
   }
 };
 
-const confirm_booking_contract = async (req, res) => {
-  try {
-    const { contractId } = req.params;
-    const customerId = req.id;
-    const contract = await Contract.findOne({
-      _id: convertToObjectIdMongodb(contractId),
-      customerId,
-    });
-
-    if (!contract) {
-      return responseReturn(res, 404, { error: "Contract not found" });
-    }
-
-    contract.customerConfirmed = {
-      status: true,
-      confirmedAt: new Date(),
-    };
-
-    await contract.save();
-
-    const booking = await bookingModel.findOneAndUpdate(
-      {
-        contractId: convertToObjectIdMongodb(contractId),
-      },
-      {
-        status: "pending",
-      },
-      {
-        new: true,
-      }
-    );
-
-    await notificationService.createNotification({
-      type: "contract",
-      senderId: convertToObjectIdMongodb(customerId),
-      senderType: "customers",
-      link: convertToObjectIdMongodb(contractId),
-      receiverId: contract.ownerId,
-      content: "Khách hàng đã xác nhận hợp đồng, đang chờ bạn xác nhận",
-      contractId: convertToObjectIdMongodb(contractId),
-      actionType: "CONTRACT_CONFIRMATION",
-    });
-
-    responseReturn(res, 200, {
-      message: "Booking confirmed successfully",
-      booking,
-    });
-  } catch (error) {
-    return responseReturn(res, 500, { error: error.message });
-  }
-};
-
 module.exports = {
   customer_submit_booking,
   get_bookings,
   check_specific_booking,
-  confirm_booking_contract,
 };

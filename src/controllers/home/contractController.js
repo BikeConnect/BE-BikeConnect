@@ -141,17 +141,20 @@ const confirmContract = async (req, res) => {
       if (isConfirmed) {
         contract.status = "pending";
         contract.expiryTime = new Date(Date.now() + 24 * 60 * 60 * 1000);
-        await notificationService.createNotification({
-          type: "contract",
-          senderId: userId,
+        const notificationData = {
+          noti_type: "contract",
+          noti_senderId: userId,
           senderType: "owner",
-          link: contractId,
-          receiverId: contract.customerId,
-          content:
-            "Chủ xe đã chấp nhận yêu cầu, vui lòng xác nhận trong vòng 24h",
+          noti_link: contractId,
+          noti_receiverId: contract.customerId,
+          noti_content: "Chủ xe đã chấp nhận yêu cầu, vui lòng xác nhận trong vòng 24h",
+          noti_options: {},
           contractId: contractId,
           actionType: "CONTRACT_ACCEPTED",
-        });
+        };
+        const newNotification = await notificationService.createNotification(
+          notificationData
+        );
       } else {
         contract.status = "cancelled";
       }
@@ -180,16 +183,20 @@ const confirmContract = async (req, res) => {
           availability_status: "rented",
         });
 
-        await notificationService.createNotification({
-          type: "contract",
-          senderId: userId,
+        const notificationData = {
+          noti_type: "contract",
+          noti_senderId: userId,
           senderType: "customer",
-          link: contractId,
-          receiverId: contract.ownerId,
-          content: "Khách hàng đã xác nhận, hợp đồng đã được kích hoạt",
+          noti_link: contractId,
+          noti_receiverId: contract.ownerId,
+          noti_content: "Khách hàng đã xác nhận, hợp đồng đã được kích hoạt",
+          noti_options: {},
           contractId: contractId,
           actionType: "CONTRACT_ACTIVATED",
-        });
+        };
+        const newNotification = await notificationService.createNotification(
+          notificationData
+        );
       } else if (!isConfirmed) {
         contract.status = "cancelled";
       }

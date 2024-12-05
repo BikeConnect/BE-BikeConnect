@@ -62,22 +62,6 @@ const add_reply = async (req, res) => {
     await review.save();
     const receiverId =
       userRole === "owner" ? review.customerId._id : review.vehicleId.ownerId._id;
-    console.log("receiverId:::", receiverId);
-    // await notificationService.createNotification({
-    //   type: "review",
-    //   senderId: userId,
-    //   senderType: userRole,
-    //   link: review.vehicleId._id,
-    //   receiverId: receiverId,
-    //   content: `${userName} đã trả lời đánh giá của bạn`,
-    //   options: {
-    //     reply_content: content,
-    //     sender_name: userName,
-    //     review_id: reviewId,
-    //     vehicle_id: review.vehicleId._id,
-    //   },
-    //   actionType: "REVIEW_REPLIED",
-    // });
     const notificationData = {
       noti_type: "review",
       noti_senderId: userId,

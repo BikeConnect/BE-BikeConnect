@@ -28,11 +28,10 @@ const add_owner_profile = async (req, res) => {
   }
 };
 
-
 const owner_update_profile = async (req, res) => {
   const { id } = req;
   const { name, phone, district, city, address } = req.body;
-  
+
   try {
     const owner = await ownerModel.findById(id);
     if (!owner) {
@@ -42,22 +41,21 @@ const owner_update_profile = async (req, res) => {
     const updateFields = {};
     if (name) updateFields.name = name.trim();
     if (phone) updateFields.phone = phone;
-    
-    
+
     if (district || city || address) {
       updateFields.subInfo = {
         ...owner.subInfo,
         district: district?.trim() || owner.subInfo?.district,
         city: city?.trim() || owner.subInfo?.city,
-        address: address?.trim() || owner.subInfo?.address
+        address: address?.trim() || owner.subInfo?.address,
       };
     }
 
     const updatedOwner = await ownerModel
       .findByIdAndUpdate(id, updateFields, {
-        new: true, 
+        new: true,
       })
-      .select("-password"); 
+      .select("-password");
 
     responseReturn(res, 200, {
       userInfo: updatedOwner,
@@ -192,6 +190,85 @@ const upload_owner_profile_image = async (req, res) => {
   });
 };
 
+const upload_owner_identity_card = async (req, res) => {
+  const { id } = req;
+  const form = formidable({
+    multiples: true,
+  });
+
+  form.parse(req, async (error, _, files) => {
+    if (error) {
+      return responseReturn(res, 500, { error: "Error parsing form data" });
+    }
+
+    cloudinary.config({
+      cloud_name: process.env.CLOUDINARY_NAME,
+      api_key: process.env.CLOUDINARY_API_KEY,
+      api_secret: process.env.CLOUDINARY_API_SECRET,
+      secure: true,
+    });
+
+    if (!files || !files.identityCard) {
+      return responseReturn(res, 400, {
+        error: "No identity card images uploaded",
+      });
+    }
+
+    const identityCardFiles = Array.isArray(files.identityCard)
+      ? files.identityCard
+      : [files.identityCard];
+
+    try {
+      const currentOwner = await ownerModel.findById(id);
+      if (!currentOwner) {
+        return responseReturn(res, 404, { error: "Owner not found" });
+      }
+
+      if (currentOwner.identityCard?.length > 0) {
+        await Promise.all(
+          currentOwner.identityCard
+            .filter((img) => img.publicId)
+            .map((img) => cloudinary.uploader.destroy(img.publicId))
+        );
+      }
+
+      const uploadPromises = identityCardFiles.map((file) =>
+        cloudinary.uploader.upload(file.filepath, {
+          folder: "IdentityCards",
+          resource_type: "auto",
+          allowed_formats: ["jpg", "png", "jpeg"],
+          transformation: [{ quality: "auto" }],
+        })
+      );
+
+      const uploadedImages = await Promise.all(uploadPromises);
+
+      const imageData = uploadedImages.map((img) => ({
+        url: img.secure_url,
+        publicId: img.public_id,
+      }));
+
+      const updatedOwner = await ownerModel
+        .findByIdAndUpdate(
+          id,
+          { $set: { identityCard: imageData } },
+          { new: true }
+        )
+        .select("-password");
+
+      responseReturn(res, 200, {
+        message: "Identity Card Images Upload Successfully",
+        userInfo: updatedOwner,
+      });
+    } catch (error) {
+      console.log("error uploading identity cards:", error);
+      responseReturn(res, 500, {
+        error: error.message || "Error uploading images",
+      });
+    }
+  });
+};
+
 module.exports = {
   add_owner_profile,
   owner_update_profile,
@@ -202,4 +279,5 @@ module.exports = {
   update_owner_status,
   update_booking_status,
   upload_owner_profile_image,
+  upload_owner_identity_card,
 };

@@ -1,6 +1,7 @@
 "use strict";
 const ownerModel = require("../models/ownerModel");
 const bookingModel = require("../models/bookingModel");
+const contractModel = require("../models/contractModel");
 const { responseReturn } = require("../utils/response");
 const { formidable } = require("formidable");
 const cloudinary = require("cloudinary").v2;
@@ -28,11 +29,10 @@ const add_owner_profile = async (req, res) => {
   }
 };
 
-
 const owner_update_profile = async (req, res) => {
   const { id } = req;
   const { name, phone, district, city, address } = req.body;
-  
+
   try {
     const owner = await ownerModel.findById(id);
     if (!owner) {
@@ -42,22 +42,21 @@ const owner_update_profile = async (req, res) => {
     const updateFields = {};
     if (name) updateFields.name = name.trim();
     if (phone) updateFields.phone = phone;
-    
-    
+
     if (district || city || address) {
       updateFields.subInfo = {
         ...owner.subInfo,
         district: district?.trim() || owner.subInfo?.district,
         city: city?.trim() || owner.subInfo?.city,
-        address: address?.trim() || owner.subInfo?.address
+        address: address?.trim() || owner.subInfo?.address,
       };
     }
 
     const updatedOwner = await ownerModel
       .findByIdAndUpdate(id, updateFields, {
-        new: true, 
+        new: true,
       })
-      .select("-password"); 
+      .select("-password");
 
     responseReturn(res, 200, {
       userInfo: updatedOwner,
@@ -192,6 +191,44 @@ const upload_owner_profile_image = async (req, res) => {
   });
 };
 
+const get_customer_booking_request = async (req, res) => {
+  try {
+    const { id } = req;
+    const bookings = await contractModel
+      .find({
+        ownerId: id,
+        status: "draft",
+      })
+      .populate("customerId", "name email phone")
+      .populate("vehicleId", "brand model price license")
+      .select(
+        "startDate endDate rentalDays customerId vehicleId totalAmount status"
+      )
+      .lean();
+
+    const formattedBookings = bookings.map((booking) => ({
+      _id: booking._id,
+      customerName: booking.customerId.name,
+      customerEmail: booking.customerId.email,
+      customerPhone: booking.customerId.phone,
+      vehicleModel: booking.vehicleId.model,
+      vehicleBrand: booking.vehicleId.brand,
+      vehiclePrice: booking.vehicleId.price,
+      vehicleLicense: booking.vehicleId.license,
+      startDate: booking.startDate,
+      endDate: booking.endDate,
+      rentalDays: booking.rentalDays,
+      totalAmount: booking.totalAmount,
+      status: booking.status,
+    }));
+
+    responseReturn(res, 200, { bookings: formattedBookings });
+  } catch (error) {
+    console.log(error.message);
+    responseReturn(res, 500, { error: error.message });
+  }
+};
+
 module.exports = {
   add_owner_profile,
   owner_update_profile,
@@ -202,4 +239,5 @@ module.exports = {
   update_owner_status,
   update_booking_status,
   upload_owner_profile_image,
+  get_customer_booking_request,
 };

@@ -21,4 +21,7 @@ router.post("/update-booking-request",verifyToken, ownerController.update_bookin
 router.post("/owner/upload-profile-image", verifyToken, ownerController.upload_owner_profile_image);
 
 router.put("/owner/update-profile", verifyToken, ownerController.owner_update_profile);
+
+router.get("/owner/get-customer-booking-request", verifyToken, ownerController.get_customer_booking_request);
+
 module.exports = router;

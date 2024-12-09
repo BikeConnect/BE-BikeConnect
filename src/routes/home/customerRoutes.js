@@ -43,4 +43,6 @@ router.put("/customer/update-profile", verifyToken,customerController.customer_u
 
 router.post("/customer/upload-profile-image", verifyToken, customerController.upload_customer_profile_image);
 
+router.put("/customer-change-password", verifyToken, customerController.customer_change_password);
+
 module.exports = router;

@@ -104,7 +104,7 @@ const customer_login = async (req, res) => {
 
         res.cookie("accessToken", token.accessToken, {
           httpOnly: true,
-          expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+          expires: new Date(Date.now() + 60 * 60 * 1000),
         });
         return responseReturn(res, 200, {
           accessToken,
@@ -127,11 +127,29 @@ const customer_login = async (req, res) => {
 };
 
 const customer_logout = async (req, res) => {
-  res.cookie("accessToken", "", {
-    httpOnly: true,
-    expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-  });
-  return responseReturn(res, 200, { message: "Logout Successfully" });
+  try {
+    const token = req.cookies.accessToken || req.headers.authorization?.split(" ")[1];
+    if (token) {
+      await userRefreshTokenModel.deleteOne({ userId: req.id });
+    }
+
+    res.clearCookie("accessToken", {
+      httpOnly: true,
+      path: "/",
+      sameSite: "lax"
+    });
+
+    return responseReturn(res, 200, { 
+      success: true,
+      message: "Đăng xuất thành công" 
+    });
+
+  } catch (error) {
+    return responseReturn(res, 500, { 
+      success: false,
+      error: "Có lỗi xảy ra khi đăng xuất" 
+    });
+  }
 };
 
 const customer_verify_email = async (req, res) => {
@@ -222,6 +240,32 @@ const customer_reset_password = async (req, res) => {
   }
 };
 
+const customer_change_password = async (req, res) => {
+  const { oldPassword, newPassword } = req.body;
+  const { id } = req;
+  try {
+    const foundCustomer = await customerModel.findById(id).select("+password");
+    if (!foundCustomer) {
+      return responseReturn(res, 404, { error: "Customer not found" });
+    }
+
+    const isMatch = await bcrypt.compare(oldPassword, foundCustomer.password);
+    if (!isMatch) {
+      return responseReturn(res, 400, {
+        error: "Current password is incorrect",
+      });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    foundCustomer.password = hashedPassword;
+    await foundCustomer.save();
+
+    responseReturn(res, 200, { message: "Password changed successfully" });
+  } catch (error) {
+    responseReturn(res, 500, { error: error.message });
+  }
+};
+
 const customer_update_profile = async (req, res) => {
   const { id } = req;
   const { name, phone, currentAddress } = req.body;
@@ -302,6 +346,7 @@ module.exports = {
   customer_verify_email,
   customer_forgot_password,
   customer_reset_password,
+  customer_change_password,
   customer_update_profile,
   upload_customer_profile_image
 };

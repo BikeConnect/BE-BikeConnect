@@ -31,7 +31,7 @@ const admin_login = async (req, res) => {
         });
 
         res.cookie("accessToken", accessToken, {
-          expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+          expires: new Date(Date.now() + 60 * 60 * 1000),
         });
         responseReturn(res, 200, {
           accessToken,
@@ -133,7 +133,7 @@ const owner_login = async (req, res) => {
 
         res.cookie("accessToken", token.accessToken, {
           httpOnly: true,
-          expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+          expires: new Date(Date.now() + 60 * 60 * 1000),
         });
         return responseReturn(res, 200, {
           accessToken,
@@ -155,12 +155,30 @@ const owner_login = async (req, res) => {
 };
 
 const owner_logout = async (req, res) => {
-  res.cookie("accessToken", "", {
-    httpOnly: true,
-    expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-  });
-  // .send();
-  return responseReturn(res, 200, { message: "Logout Successfully" });
+  try {
+    const token =
+      req.cookies.accessToken || req.headers.authorization?.split(" ")[1];
+
+    if (token) {
+      await userRefreshTokenModel.deleteOne({ userId: req.id });
+    }
+
+    res.clearCookie("accessToken", {
+      httpOnly: true,
+      path: "/",
+      sameSite: "lax",
+    });
+
+    return responseReturn(res, 200, {
+      success: true,
+      message: "Đăng xuất thành công",
+    });
+  } catch (error) {
+    return responseReturn(res, 500, {
+      success: false,
+      error: "Có lỗi xảy ra khi đăng xuất",
+    });
+  }
 };
 
 const asyncHandler = (fn) => {
@@ -273,7 +291,7 @@ const owner_forgot_password = async (req, res) => {
     if (!owner) {
       return responseReturn(res, 404, { error: "Email Not Found" });
     }
-    //generate token
+
     const resetToken = crypto.randomBytes(32).toString("hex");
     const resetTokenExpire = Date.now() + 5 * 60 * 1000; // 5 minutes
     owner.resetPasswordToken = resetToken;
@@ -283,8 +301,8 @@ const owner_forgot_password = async (req, res) => {
     //send email
     await sendPasswordResetEmail(
       owner.email,
-      `${process.env.CLIENT_URL}/owner-reset-password/${resetToken}`
-    ); //tham so thu 2 la link reset password 'http://localhost:3000/owner-reset-password/${resetToken}'
+      `${process.env.CLIENT_URL}/reset-password/${resetToken}`
+    ); //tham so thu 2 la link reset password 'http://localhost:3000/reset-password/${resetToken}'
     responseReturn(res, 200, {
       message: "Password reset link sent to your email!",
     });
@@ -318,6 +336,32 @@ const owner_reset_password = async (req, res) => {
     });
   } catch (error) {
     console.log(error.message);
+  }
+};
+
+const owner_change_password = async (req, res) => {
+  const { oldPassword, newPassword } = req.body;
+  const { id } = req;
+  try {
+    const foundOwner = await ownerModel.findById(id).select("+password");
+    if (!foundOwner) {
+      return responseReturn(res, 404, { error: "Owner not found" });
+    }
+
+    const isMatch = await bcrypt.compare(oldPassword, foundOwner.password);
+    if (!isMatch) {
+      return responseReturn(res, 400, {
+        error: "Current password is incorrect",
+      });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    foundOwner.password = hashedPassword;
+    await foundOwner.save();
+
+    responseReturn(res, 200, { message: "Password changed successfully" });
+  } catch (error) {
+    responseReturn(res, 500, { error: error.message });
   }
 };
 
@@ -357,7 +401,6 @@ const getUser = async (req, res) => {
   }
 };
 
-
 module.exports = {
   admin_login,
   owner_register,
@@ -367,6 +410,7 @@ module.exports = {
   checkRefreshToken,
   owner_forgot_password,
   owner_reset_password,
+  owner_change_password,
   asyncHandler,
   verifyToken,
   getUser,

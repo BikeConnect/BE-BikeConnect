@@ -16,6 +16,7 @@ router.post("/auth/owner-verify-email", authController.owner_verify_email);
 router.post("/auth/owner-forgot-password",authController.owner_forgot_password);
 router.post("/auth/owner-reset-password/:token",authController.owner_reset_password);
 
+router.put("/owner-change-password", verifyToken, authController.owner_change_password);
 
 router.get("/get-user", verifyToken, authController.getUser);
 

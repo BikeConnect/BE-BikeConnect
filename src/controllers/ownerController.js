@@ -6,7 +6,8 @@ const { responseReturn } = require("../utils/response");
 const { formidable } = require("formidable");
 const cloudinary = require("cloudinary").v2;
 require("dotenv").config();
-const { vehicle } = require("../models/vehicleModel");
+const vehicle = require("../models/vehicleModel");
+const { SuccessResponse } = require("../core/success.response");
 
 const add_owner_profile = async (req, res) => {
   const { address, district, city } = req.body;
@@ -194,17 +195,115 @@ const upload_owner_profile_image = async (req, res) => {
 const get_customer_booking_request = async (req, res) => {
   try {
     const { id } = req;
+    const page = parseInt(req.query.page) || 1;
+    const limit = 5;
+    const skip = (page - 1) * limit;
+
+    const totalRequests = await contractModel.countDocuments({
+      ownerId: id,
+      status: "draft",
+      'ownerConfirmed.status': false,
+    });
+
     const bookings = await contractModel
       .find({
         ownerId: id,
         status: "draft",
+        'ownerConfirmed.status': false,
       })
       .populate("customerId", "name email phone")
       .populate("vehicleId", "brand model price license")
       .select(
         "startDate endDate rentalDays customerId vehicleId totalAmount status"
       )
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
       .lean();
+
+    const formattedBookings = bookings
+      .filter((booking) => booking.customerId && booking.vehicleId)
+      .map((booking) => ({
+        _id: booking._id,
+        customerName: booking.customerId?.name || "",
+        customerEmail: booking.customerId?.email || "",
+        customerPhone: booking.customerId?.phone || "",
+        vehicleModel: booking.vehicleId?.model || "",
+        vehicleBrand: booking.vehicleId?.brand || "",
+        vehiclePrice: booking.vehicleId?.price || 0,
+        vehicleLicense: booking.vehicleId?.license || "",
+        startDate: booking.startDate,
+        endDate: booking.endDate,
+        rentalDays: booking.rentalDays,
+        totalAmount: booking.totalAmount,
+        status: booking.status,
+      }));
+
+    const totalPages = Math.ceil(totalRequests / limit);
+    const hasNextPage = page < totalPages;
+    const hasPrevPage = page > 1;
+
+    responseReturn(res, 200, {
+      bookings: formattedBookings,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalItems: totalRequests,
+        itemsPerPage: limit,
+        hasNextPage,
+        hasPrevPage
+      }
+    });
+  } catch (error) {
+    console.log(error.message);
+    responseReturn(res, 500, { error: error.message });
+  }
+};
+
+const get_owner_all_bookings_history = async (req, res) => {
+  try {
+    const { id } = req;
+    const page = parseInt(req.query.page) || 1;
+    const limit = 5;
+    const skip = (page - 1) * limit;
+
+    const totalBookings = await contractModel.countDocuments({
+      ownerId: id,
+      status: {
+        $ne: "draft",
+      },
+    });
+
+    const currentDate = new Date();
+    const bookings = await contractModel
+      .find({
+        ownerId: id,
+        status: {
+          $ne: "draft",
+        },
+      })
+      .populate("customerId", "name email phone")
+      .populate("vehicleId", "brand model price license")
+      .select(
+        "startDate endDate rentalDays customerId vehicleId totalAmount status ownerConfirmed"
+      )
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean();
+
+    const updateDate = bookings.map(async (booking) => {
+      const endDate = new Date(booking.endDate);
+      if (currentDate > endDate && booking.status === "active") {
+        await contractModel.findByIdAndUpdate(booking._id, {
+          status: "completed",
+        });
+        booking.status = "completed";
+      }
+      return booking;
+    });
+
+    await Promise.all(updateDate);
 
     const formattedBookings = bookings.map((booking) => ({
       _id: booking._id,
@@ -220,9 +319,135 @@ const get_customer_booking_request = async (req, res) => {
       rentalDays: booking.rentalDays,
       totalAmount: booking.totalAmount,
       status: booking.status,
+      ownerConfirmed: booking.ownerConfirmed,
     }));
 
-    responseReturn(res, 200, { bookings: formattedBookings });
+    const totalPages = Math.ceil(totalBookings / limit);
+    const hasNextPage = page < totalPages;
+    const hasPrevPage = page > 1;
+
+    responseReturn(res, 200, {
+      bookings: formattedBookings,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalItems: totalBookings,
+        itemsPerPage: limit,
+        hasNextPage,
+        hasPrevPage
+      }
+    });
+  } catch (error) {
+    console.log(error.message);
+    responseReturn(res, 500, { error: error.message });
+  }
+};
+
+const get_owner_vehicles = async (req, res) => {
+  try {
+    const { id } = req;
+    const page = parseInt(req.query.page) || 1;
+    const limit = 5;
+    const skip = (page - 1) * limit;
+
+    const totalVehicles = await vehicle.countDocuments({ ownerId: id });
+
+    const vehicles = await vehicle
+      .find({ ownerId: id })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean();
+
+    const totalPages = Math.ceil(totalVehicles / limit);
+    const hasNextPage = page < totalPages;
+    const hasPrevPage = page > 1;
+
+    res.status(200).json({
+      metadata: vehicles,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalItems: totalVehicles,
+        itemsPerPage: limit,
+        hasNextPage,
+        hasPrevPage
+      }
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const update_vehicle_status = async (req, res, next) => {
+  try {
+    const { vehicleId } = req.params;
+    const { startDate, endDate, availableDates, availability_status } =
+      req.body;
+    const { id: ownerId } = req;
+
+    const currentVehicle = await vehicle.findOne({
+      _id: vehicleId,
+      ownerId,
+    });
+
+    if (!currentVehicle) {
+      return responseReturn(res, 404, { error: "Vehicle not found" });
+    }
+
+    const currentDate = new Date();
+    currentDate.setHours(0, 0, 0, 0);
+
+    if (new Date(startDate) < currentDate) {
+      return responseReturn(res, 400, {
+        error: "Start date cannot be in the past",
+      });
+    }
+
+    if (new Date(endDate) <= new Date(startDate)) {
+      return responseReturn(res, 400, {
+        error: "End date must be after start date",
+      });
+    }
+
+    const isRented = await contractModel.find({
+      vehicleId: vehicleId,
+      status: "active",
+      endDate: { $gte: currentDate },
+    });
+
+    let updateData = {
+      startDate,
+      endDate,
+      availableDates,
+      availability_status,
+    };
+
+    if (isRented.length > 0) {
+      const existingDates = currentVehicle.availableDates.map((d) =>
+        d.getTime()
+      );
+      const newDates = availableDates.filter(
+        (d) => !existingDates.includes(new Date(d).getTime())
+      );
+
+      updateData = {
+        availableDates: [...currentVehicle.availableDates, ...newDates],
+        availability_status: currentVehicle.availability_status,
+      };
+    }
+
+    const updatedVehicle = await vehicle.findByIdAndUpdate(
+      vehicleId,
+      { $set: updateData },
+      { new: true }
+    );
+
+    responseReturn(res, 200, {
+      message: "Vehicle updated successfully",
+      updatedVehicle,
+    });
   } catch (error) {
     console.log(error.message);
     responseReturn(res, 500, { error: error.message });
@@ -240,4 +465,7 @@ module.exports = {
   update_booking_status,
   upload_owner_profile_image,
   get_customer_booking_request,
+  get_owner_all_bookings_history,
+  get_owner_vehicles,
+  update_vehicle_status,
 };

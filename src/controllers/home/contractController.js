@@ -111,7 +111,6 @@ const deleteContract = async (req, res) => {
   }
 };
 
-
 const confirmContract = async (req, res) => {
   const { contractId } = req.params;
   const { isConfirmed, rejectReason } = req.body;
@@ -132,31 +131,52 @@ const confirmContract = async (req, res) => {
     }
 
     if (userRole === "owner") {
-      contract.ownerConfirmed = {
-        status: isConfirmed,
-        rejectionReason: isConfirmed ? null : rejectReason,
-        confirmedAt: new Date(),
-      };
+      if (!isConfirmed) {
+        contract.status = "cancelled";
+        contract.ownerConfirmed = {
+          status: false,
+          rejectionReason: rejectReason,
+          confirmedAt: new Date(),
+        };
 
-      if (isConfirmed) {
-        contract.status = "pending";
-        contract.expiryTime = new Date(Date.now() + 24 * 60 * 60 * 1000);
-        const notificationData = {
+        await contract.save();
+
+        await notificationService.createNotification({
           noti_type: "contract",
           noti_senderId: userId,
           senderType: "owner",
           noti_link: contractId,
           noti_receiverId: contract.customerId,
-          noti_content: "Chủ xe đã chấp nhận yêu cầu, vui lòng xác nhận trong vòng 24h",
-          noti_options: {},
+          noti_content: `Yêu cầu thuê xe đã bị từ chối. Lý do: ${rejectReason}`,
+          contractId: contractId,
+          actionType: "CONTRACT_REJECTED",
+        });
+
+        return responseReturn(res, 200, {
+          message: "Contract rejected successfully",
+          contract,
+        });
+      } else {
+        contract.ownerConfirmed = {
+          status: true,
+          confirmedAt: new Date(),
+        };
+        contract.status = "pending";
+        contract.expiryTime = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+        await contract.save();
+
+        await notificationService.createNotification({
+          noti_type: "contract",
+          noti_senderId: userId,
+          senderType: "owner",
+          noti_link: contractId,
+          noti_receiverId: contract.customerId,
+          noti_content:
+            "Chủ xe đã chấp nhận yêu cầu, vui lòng xác nhận trong vòng 24h",
           contractId: contractId,
           actionType: "CONTRACT_ACCEPTED",
-        };
-        const newNotification = await notificationService.createNotification(
-          notificationData
-        );
-      } else {
-        contract.status = "cancelled";
+        });
       }
     }
 
@@ -299,6 +319,34 @@ const completeContract = async (req, res) => {
   }
 };
 
+const getCustomerBookingRequest = async (req, res) => {
+  const ownerId = req.id;
+
+  try {
+    const contracts = await contractModel
+      .find({
+        ownerId: ownerId,
+        status: "draft",
+        "ownerConfirmed.status": false,
+        "customerConfirmed.status": true,
+      })
+      .populate("customerId vehicleId");
+
+    const bookings = contracts.map((contract) => ({
+      _id: contract._id,
+      customerName: contract.customerId.name,
+      vehicleModel: contract.vehicleId.model,
+      startDate: contract.startDate,
+      endDate: contract.endDate,
+      totalAmount: contract.totalAmount,
+    }));
+
+    responseReturn(res, 200, { bookings });
+  } catch (error) {
+    responseReturn(res, 500, { error: error.message });
+  }
+};
+
 cron.schedule("1 0 * * *", async (req, res) => {
   try {
     const currentDate = new Date();
@@ -358,4 +406,5 @@ module.exports = {
   deleteContract,
   confirmContract,
   completeContract,
+  getCustomerBookingRequest,
 };

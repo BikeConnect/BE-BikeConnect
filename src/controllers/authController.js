@@ -38,7 +38,7 @@ const admin_login = async (req, res) => {
           message: "Login Successfully",
         });
       } else {
-        responseReturn(res, 404, { error: "Password Wrong!" });
+        responseReturn(res, 404, { error: "Password Wrong" });
       }
     }
   } catch (error) {

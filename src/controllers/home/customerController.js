@@ -113,10 +113,10 @@ const customer_login = async (req, res) => {
           role: existingUser.role,
         });
       } else {
-        return responseReturn(res, 404, { error: "Password Wrong!" });
+        return responseReturn(res, 404, { error: "Sai mật khẩu!" });
       }
     } else {
-      return responseReturn(res, 404, { error: "Email Not Found" });
+      return responseReturn(res, 404, { error: "Email không tồn tại!" });
     }
   } catch (error) {
     return responseReturn(res, 500, {

@@ -34,14 +34,35 @@ router.post(
 );
 
 router.post(
-  "/home/customer/submit-review",verifyToken,
+  "/home/customer/submit-review",
+  verifyToken,
   homeController.customer_submit_review
 );
 router.get("/home/customer/get-reviews/:vehicleId", homeController.get_reviews);
 
-router.put("/customer/update-profile", verifyToken,customerController.customer_update_profile);
+router.put(
+  "/customer/update-profile",
+  verifyToken,
+  customerController.customer_update_profile
+);
 
-router.post("/customer/upload-profile-image", verifyToken, customerController.upload_customer_profile_image);
+router.post(
+  "/customer/upload-profile-image",
+  verifyToken,
+  customerController.upload_customer_profile_image
+);
+
+router.patch(
+  "/customer/upload-identity-card",
+  verifyToken,
+  customerController.upload_customer_identity_card
+);
+
+router.get(
+  "/customer/analyze-identity-card",
+  verifyToken,
+  customerController.analyzeIdentityCard
+);
 
 router.put("/customer-change-password", verifyToken, customerController.customer_change_password);
 

@@ -22,6 +22,18 @@ const ownerSchema = new Schema(
       type: String,
       default: "",
     },
+    identityCard: [
+      {
+        url: {
+          type: String,
+          default: "",
+        },
+        publicId: {
+          type: String,
+          default: "",
+        },
+      },
+    ],
     role: {
       type: String,
       default: "owner",

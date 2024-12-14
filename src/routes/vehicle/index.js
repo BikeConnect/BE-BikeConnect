@@ -28,7 +28,7 @@ router.post(
   vehicleController.createVehicle
 );
 
-router.patch(
+router.put(
   "/update-vehicle/:vehicleId",
   handleImageUpload,
   asyncHandler(vehicleController.updateVehicle)

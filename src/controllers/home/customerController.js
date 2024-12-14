@@ -15,6 +15,7 @@ const {
   sendResetSuccessEmail,
 } = require("../../sendmail/email");
 const { formidable } = require("formidable");
+const { detectImageManipulation } = require("../../services/imageAnalysis.service");
 const cloudinary = require("cloudinary").v2;
 
 const customer_register = async (req, res) => {
@@ -339,6 +340,118 @@ const upload_customer_profile_image = async (req, res) => {
   });
 };
 
+const upload_customer_identity_card = async (req, res) => {
+  const { id } = req;
+  const form = formidable({ multiples: true });
+
+  form.parse(req, async (error, _, files) => {
+    cloudinary.config({
+      cloud_name: process.env.CLOUDINARY_NAME,
+      api_key: process.env.CLOUDINARY_API_KEY,
+      api_secret: process.env.CLOUDINARY_API_SECRET,
+      secure: true,
+    });
+
+    const { identityCard } = files;
+    if (!identityCard || identityCard.length === 0) {
+      return responseReturn(res, 400, {
+        error: "No identity card images uploaded",
+      });
+    }
+
+    try {
+      const currentCustomer = await customerModel.findById(id);
+      if (!currentCustomer) {
+        return responseReturn(res, 404, { error: "Customer not found" });
+      }
+
+      if (
+        currentCustomer.identityCard &&
+        currentCustomer.identityCard.length > 0
+      ) {
+        await Promise.all(
+          currentCustomer.identityCard
+            .filter((img) => img.publicId)
+            .map((img) => cloudinary.uploader.destroy(img.publicId))
+        );
+      }
+
+      const uploadPromises = identityCard.map((image) =>
+        cloudinary.uploader.upload(image.filepath, {
+          folder: "IdentityCards",
+          resource_type: "auto",
+          allowed_formats: ["jpg", "png", "jpeg"],
+          transformation: [{ quality: "auto" }],
+        })
+      );
+
+      const uploadedImages = await Promise.all(uploadPromises);
+
+      const imageData = uploadedImages.map((img) => ({
+        url: img.secure_url,
+        publicId: img.public_id,
+      }));
+
+      if (uploadPromises) {
+        const updatedCustomer = await customerModel
+          .findByIdAndUpdate(
+            id,
+            {
+              $set: { identityCard: imageData },
+            },
+            { new: true }
+          )
+          .select("-password");
+
+        responseReturn(res, 200, {
+          message: "Identity Card Image Updated Successfully",
+          userInfo: updatedCustomer,
+        });
+      } else {
+        responseReturn(res, 404, {
+          message: "Identity Card Image Update Failed",
+        });
+      }
+    } catch (error) {
+      console.log("error updating identity card:", error.message);
+      responseReturn(res, 500, { error: error.message });
+    }
+  });
+};
+
+const analyzeIdentityCard = async (req, res) => {
+  const { id } = req;
+  try {
+    const customer = await customerModel.findById(id);
+    if (!customer || !customer.identityCard || customer.identityCard.length === 0) {
+      return responseReturn(res, 404, { error: "No identity card images found" });
+    }
+
+    const analysisResults = await Promise.all(
+      customer.identityCard.map(async (card) => {
+        const analysis = await detectImageManipulation(card.url);
+        return {
+          imageUrl: card.url,
+          ...analysis
+        };
+      })
+    );
+
+    const manipulatedImages = analysisResults.filter(result => result.isManipulated);
+
+    responseReturn(res, 200, {
+      message: "Identity card analysis completed",
+      results: analysisResults,
+      hasSuspiciousImages: manipulatedImages.length > 0,
+      manipulatedImages
+    });
+
+  } catch (error) {
+    console.error('Error analyzing identity card:', error);
+    responseReturn(res, 500, { error: error.message });
+  }
+};
+
 module.exports = {
   customer_register,
   customer_login,
@@ -348,5 +461,7 @@ module.exports = {
   customer_reset_password,
   customer_change_password,
   customer_update_profile,
-  upload_customer_profile_image
+  upload_customer_profile_image,
+  upload_customer_identity_card,
+  analyzeIdentityCard,
 };

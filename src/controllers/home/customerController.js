@@ -15,6 +15,7 @@ const {
   sendResetSuccessEmail,
 } = require("../../sendmail/email");
 const { formidable } = require("formidable");
+const { detectImageManipulation } = require("../../services/imageAnalysis.service");
 const cloudinary = require("cloudinary").v2;
 
 const customer_register = async (req, res) => {
@@ -374,6 +375,39 @@ const upload_customer_identity_card = async (req, res) => {
   });
 };
 
+const analyzeIdentityCard = async (req, res) => {
+  const { id } = req;
+  try {
+    const customer = await customerModel.findById(id);
+    if (!customer || !customer.identityCard || customer.identityCard.length === 0) {
+      return responseReturn(res, 404, { error: "No identity card images found" });
+    }
+
+    const analysisResults = await Promise.all(
+      customer.identityCard.map(async (card) => {
+        const analysis = await detectImageManipulation(card.url);
+        return {
+          imageUrl: card.url,
+          ...analysis
+        };
+      })
+    );
+
+    const manipulatedImages = analysisResults.filter(result => result.isManipulated);
+
+    responseReturn(res, 200, {
+      message: "Identity card analysis completed",
+      results: analysisResults,
+      hasSuspiciousImages: manipulatedImages.length > 0,
+      manipulatedImages
+    });
+
+  } catch (error) {
+    console.error('Error analyzing identity card:', error);
+    responseReturn(res, 500, { error: error.message });
+  }
+};
+
 module.exports = {
   customer_register,
   customer_login,
@@ -384,4 +418,5 @@ module.exports = {
   customer_update_profile,
   upload_customer_profile_image,
   upload_customer_identity_card,
+  analyzeIdentityCard,
 };

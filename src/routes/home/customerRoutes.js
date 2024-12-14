@@ -58,4 +58,10 @@ router.patch(
   customerController.upload_customer_identity_card
 );
 
+router.get(
+  "/customer/analyze-identity-card",
+  verifyToken,
+  customerController.analyzeIdentityCard
+);
+
 module.exports = router;

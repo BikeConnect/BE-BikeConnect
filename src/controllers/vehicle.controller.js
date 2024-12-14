@@ -108,20 +108,35 @@ class VehicleController {
         }
       }
 
-      const allowedFields = [
+      const requiredFields = [
         "brand",
         "model",
         "price",
-        "discount",
         "description",
         "address",
         "license",
+      ];
+
+      const missingFields = requiredFields.filter(
+        (field) => !updateData[field]
+      );
+      if (missingFields.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message: `Missing required fields: ${missingFields.join(", ")}`,
+        });
+      }
+
+      const allowedFields = [
+        ...requiredFields,
+        "discount",
         "startDate",
         "endDate",
         "availableDates",
         "images",
       ];
 
+      // Filter update data to only include allowed fields
       const filteredUpdate = Object.keys(updateData)
         .filter((key) => allowedFields.includes(key))
         .reduce((obj, key) => {
@@ -129,6 +144,7 @@ class VehicleController {
           return obj;
         }, {});
 
+      // Update the vehicle with complete data
       const updatedVehicle = await vehicle.findByIdAndUpdate(
         vehicleId,
         { $set: filteredUpdate },
@@ -245,7 +261,9 @@ class VehicleController {
     }
 
     try {
-      const vehicles = await vehicle.find().populate("ownerId", "name email currentAddress");
+      const vehicles = await vehicle
+        .find()
+        .populate("ownerId", "name email currentAddress");
 
       const distances = await Promise.all(
         vehicles.map(async (vehicle) => {
@@ -302,15 +320,17 @@ class VehicleController {
   getListSearchVehicles = async (req, res, next) => {
     try {
       const { keySearch } = req.query;
-      
+
       if (!keySearch) {
         return res.status(400).json({
-          message: "Search key is required"
+          message: "Search key is required",
         });
       }
-  
-      const searchResults = await VehicleService.getListSearchVehicles({ keySearch });
-  
+
+      const searchResults = await VehicleService.getListSearchVehicles({
+        keySearch,
+      });
+
       new SuccessResponse({
         message: "Search vehicles success!",
         metadata: searchResults,

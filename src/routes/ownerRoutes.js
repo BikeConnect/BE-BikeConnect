@@ -44,25 +44,45 @@ router.post(
   ownerController.upload_owner_profile_image
 );
 
-router.put("/owner/update-profile", verifyToken, ownerController.owner_update_profile);
-
-router.get("/owner/get-customer-booking-request", verifyToken, ownerController.get_customer_booking_request);
-
-router.get("/owner/get-owner-all-bookings-history", verifyToken, ownerController.get_owner_all_bookings_history);
-
-router.get("/owner/get-owner-vehicles", verifyToken, ownerController.get_owner_vehicles);
-
-router.put("/owner/update-vehicle-status/:vehicleId", verifyToken, ownerController.update_vehicle_status);
-
 router.put(
   "/owner/update-profile",
   verifyToken,
   ownerController.owner_update_profile
 );
 
-router.patch(
-  "/owner/upload-identity-card",
+router.get(
+  "/owner/get-customer-booking-request",
   verifyToken,
-  ownerController.upload_owner_identity_card
+  ownerController.get_customer_booking_request
 );
+
+router.get(
+  "/owner/get-owner-all-bookings-history",
+  verifyToken,
+  ownerController.get_owner_all_bookings_history
+);
+
+router.get(
+  "/owner/get-owner-vehicles",
+  verifyToken,
+  ownerController.get_owner_vehicles
+);
+
+router.put(
+  "/owner/update-vehicle-status/:vehicleId",
+  verifyToken,
+  ownerController.update_vehicle_status
+);
+
+// router.put(
+//   "/owner/update-profile",
+//   verifyToken,
+//   ownerController.owner_update_profile
+// );
+
+// router.patch(
+//   "/owner/upload-identity-card",
+//   verifyToken,
+//   ownerController.upload_owner_identity_card
+// );
 module.exports = router;

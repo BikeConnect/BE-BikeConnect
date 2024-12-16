@@ -54,15 +54,15 @@ router.get("/owner/get-owner-vehicles", verifyToken, ownerController.get_owner_v
 
 router.put("/owner/update-vehicle-status/:vehicleId", verifyToken, ownerController.update_vehicle_status);
 
-router.put(
-  "/owner/update-profile",
-  verifyToken,
-  ownerController.owner_update_profile
-);
+// router.put(
+//   "/owner/update-profile",
+//   verifyToken,
+//   ownerController.owner_update_profile
+// );
 
-router.patch(
-  "/owner/upload-identity-card",
-  verifyToken,
-  ownerController.upload_owner_identity_card
-);
+// router.patch(
+//   "/owner/upload-identity-card",
+//   verifyToken,
+//   ownerController.upload_owner_identity_card
+// );
 module.exports = router;

@@ -9,21 +9,14 @@ const vehicleController = require("../../controllers/vehicle.controller");
 
 router.get("/search", vehicleController.getListSearchVehicles);
 router.get("/filter", asyncHandler(vehicleController.filterVehicles));
-router.get(
-  "/list-vehicles",
-  asyncHandler(vehicleController.getAllVehiclesPublic)
-);
-router.get(
-  "/vehicle-detail/:vehicleId",
-  asyncHandler(vehicleController.getVehicleById)
-);
+router.get("/list-vehicles", asyncHandler(vehicleController.getAllVehiclesPublic));
+router.get("/vehicle-detail/:vehicleId", asyncHandler(vehicleController.getVehicleById));
 
 // Owner
 router.use(verifyToken);
 
 router.post(
   "/create-vehicle",
-  verifyToken,
   handleImageUpload,
   vehicleController.createVehicle
 );
@@ -36,7 +29,6 @@ router.put(
 
 router.delete(
   "/delete-vehicle/:vehicleId",
-  verifyToken,
   asyncHandler(vehicleController.deleteVehicle)
 );
 
@@ -44,4 +36,5 @@ router.get(
   "/owner-list-vehicles",
   asyncHandler(vehicleController.getOwnerVehicles)
 );
+
 module.exports = router;

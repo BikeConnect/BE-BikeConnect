@@ -14,7 +14,7 @@ const reviewSchema = new Schema(
       ref: "Owner",  
     },
     customerId: {
-      type: Schema.ObjectId,
+      type: Schema.Types.ObjectId,
       ref: "customers",  
     },
     name: {

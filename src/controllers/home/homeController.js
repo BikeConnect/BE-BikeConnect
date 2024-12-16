@@ -17,6 +17,7 @@ const customer_submit_review = async (req, res) => {
 
     await reviewModel.create({
       vehicleId,
+      customerId: req.id, 
       name,
       rating,
       review,
@@ -60,7 +61,7 @@ const customer_submit_review = async (req, res) => {
   }
 };
 
-const get_reviews = async (req, res) => {
+const  get_reviews = async (req, res) => {
   const { vehicleId } = req.params;
   let { pageNo } = req.query;
   pageNo = parseInt(pageNo);
@@ -128,9 +129,16 @@ const get_reviews = async (req, res) => {
     const getAll = await reviewModel.find({ vehicleId });
     const reviews = await reviewModel
       .find({ vehicleId })
+      .populate({
+        path: 'customerId',
+        select: 'image name',
+        model: 'customers' 
+      })
       .skip(skipPage)
       .limit(limit)
       .sort({ createdAt: -1 });
+
+    console.log("reviews:::", reviews);
 
     responseReturn(res, 200, {
       reviews,

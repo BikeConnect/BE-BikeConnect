@@ -13,7 +13,7 @@ class VehicleController {
       const ownerId = req.ownerId;
       let vehicleData;
 
-      if (!req.body.vehicle) {
+      if (!req.body.vehicle && !req.body.brand) {
         return res.status(400).json({
           success: false,
           message: "Vehicle data is required",
@@ -37,6 +37,10 @@ class VehicleController {
           url: file.path,
           publicId: file.filename,
         }));
+      }
+
+      if (!vehicleData.discount) {
+        vehicleData.discount = 0;
       }
 
       const createdVehicle = await vehicle.create({
@@ -136,7 +140,6 @@ class VehicleController {
         "images",
       ];
 
-      // Filter update data to only include allowed fields
       const filteredUpdate = Object.keys(updateData)
         .filter((key) => allowedFields.includes(key))
         .reduce((obj, key) => {
@@ -144,7 +147,6 @@ class VehicleController {
           return obj;
         }, {});
 
-      // Update the vehicle with complete data
       const updatedVehicle = await vehicle.findByIdAndUpdate(
         vehicleId,
         { $set: filteredUpdate },

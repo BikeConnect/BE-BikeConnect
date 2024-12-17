@@ -25,20 +25,27 @@ const customer_submit_booking = async (req, res) => {
       });
     }
 
-    const start = moment(startDate).startOf("day");
-    const end = moment(endDate).startOf("day");
+    const start = moment(startDate, "DD/MM/YYYY").utcOffset('+07:00').startOf('day');
+    const end = moment(endDate, "DD/MM/YYYY").utcOffset('+07:00').startOf('day');
+
+    const vehicleStartDate = moment(vehicleData.startDate).startOf('day');
+    const vehicleEndDate = moment(vehicleData.endDate).startOf('day');
+
+    if (start < vehicleStartDate || end > vehicleEndDate) {
+      return responseReturn(res, 400, {
+        message: "Ngày thuê phải nằm trong khoảng thời gian cho phép của xe",
+      });
+    }
 
     const availableDatesStr = vehicleData.availableDates.map((date) =>
-      moment(date).startOf("day").format("YYYY-MM-DD")
+      moment(date).format("DD/MM/YYYY")
     );
 
     let currentDate = start.clone();
     while (currentDate <= end) {
-      if (!availableDatesStr.includes(currentDate.format("YYYY-MM-DD"))) {
+      if (!availableDatesStr.includes(currentDate.format("DD/MM/YYYY"))) {
         return responseReturn(res, 400, {
-          message: `Ngày ${currentDate.format(
-            "DD/MM/YYYY"
-          )} không có sẵn để đặt`,
+          message: `Ngày ${currentDate.format("DD/MM/YYYY")} không có sẵn để đặt`,
         });
       }
       currentDate.add(1, "days");
@@ -93,15 +100,21 @@ const customer_submit_booking = async (req, res) => {
 
 const get_bookings = async (req, res) => {
   const { startDate, endDate } = req.query;
-  const start = moment(startDate, "DD/MM/YYYY").toDate();
-  const end = moment(endDate, "DD/MM/YYYY").toDate();
+  const start = moment(startDate, "DD/MM/YYYY")
+    .utcOffset("+07:00")
+    .startOf("day")
+    .toDate();
+  const end = moment(endDate, "DD/MM/YYYY")
+    .utcOffset("+07:00")
+    .startOf("day")
+    .toDate();
 
   if (start > end) {
     return responseReturn(res, 400, {
       message: "startDate must not greater than endDate",
     });
   }
-  
+
   try {
     const availableVehicles = await vehicleModel
       .find({

@@ -103,7 +103,6 @@ const get_bookings = async (req, res) => {
         availability_status: "available",
         $and: [{ startDate: { $lte: end } }, { endDate: { $gte: start } }],
       })
-      .populate("vehicleId")
       .select("-createdAt -updatedAt -__v");
 
     console.log("availableVehicles:::", availableVehicles);

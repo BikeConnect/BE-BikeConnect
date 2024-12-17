@@ -25,25 +25,28 @@ const customer_submit_booking = async (req, res) => {
       });
     }
 
-    const start = moment(startDate).startOf('day');
-    const end = moment(endDate).startOf('day');
-    
-    const availableDatesStr = vehicleData.availableDates.map(date => 
-      moment(date).startOf('day').format('YYYY-MM-DD')
+    const start = moment(startDate).startOf("day");
+    const end = moment(endDate).startOf("day");
+
+    const availableDatesStr = vehicleData.availableDates.map((date) =>
+      moment(date).startOf("day").format("YYYY-MM-DD")
     );
 
     let currentDate = start.clone();
     while (currentDate <= end) {
-      if (!availableDatesStr.includes(currentDate.format('YYYY-MM-DD'))) {
+      if (!availableDatesStr.includes(currentDate.format("YYYY-MM-DD"))) {
         return responseReturn(res, 400, {
-          message: `Ngày ${currentDate.format('DD/MM/YYYY')} không có sẵn để đặt`,
+          message: `Ngày ${currentDate.format(
+            "DD/MM/YYYY"
+          )} không có sẵn để đặt`,
         });
       }
-      currentDate.add(1, 'days');
+      currentDate.add(1, "days");
     }
 
     const days = end.diff(start, "days") + 1;
-    const totalPrice = days * vehicleData.price * (1 - vehicleData.discount / 100);
+    const totalPrice =
+      days * vehicleData.price * (1 - vehicleData.discount / 100);
 
     const contract = await contractModel.create({
       customerId,
@@ -69,7 +72,8 @@ const customer_submit_booking = async (req, res) => {
       senderType: "customer",
       noti_link: contract._id,
       noti_receiverId: convertToObjectIdMongodb(vehicleData.ownerId),
-      noti_content: "Bạn có yêu cầu thuê xe mới, vui lòng xác nhận trong vòng 24h",
+      noti_content:
+        "Bạn có yêu cầu thuê xe mới, vui lòng xác nhận trong vòng 24h",
       noti_options: {},
       contractId: contract._id,
       actionType: "REVIEW_REPLIED",
@@ -91,19 +95,19 @@ const get_bookings = async (req, res) => {
   const { startDate, endDate } = req.query;
   const start = moment(startDate, "DD/MM/YYYY").toDate();
   const end = moment(endDate, "DD/MM/YYYY").toDate();
-  console.log("Query dates:", { start, end });
+
   if (start > end) {
     return responseReturn(res, 400, {
       message: "startDate must not greater than endDate",
     });
   }
+  
   try {
     const availableVehicles = await vehicleModel
       .find({
         availability_status: "available",
         $and: [{ startDate: { $lte: end } }, { endDate: { $gte: start } }],
       })
-      .populate("vehicleId")
       .select("-createdAt -updatedAt -__v");
 
     console.log("availableVehicles:::", availableVehicles);

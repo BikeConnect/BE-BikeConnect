@@ -84,22 +84,6 @@ const contractSchema = new Schema(
         },
       },
     ],
-    modificationHistory: [
-      {
-        modifiedBy: {
-          type: Schema.ObjectId,
-          ref: "admins",
-          required: true,
-        },
-        modifiedAt: {
-          type: Date,
-          default: Date.now,
-        },
-        changes: {
-          type: Object,
-        },
-      },
-    ],
   },
   {
     collection: COLLECTION_NAME,

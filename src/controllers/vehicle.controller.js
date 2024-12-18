@@ -210,12 +210,12 @@ class VehicleController {
       const { vehicleId } = req.params;
       const vehicleData = await vehicle
         .findById(vehicleId)
-        .populate("ownerId", "name email currentAddress");
+        .populate("ownerId", "name email currentAddress phone");
 
       if (!vehicleData) {
         return res.status(404).json({ message: "Vehicle not found" });
       }
-
+      console.log("vehicleData::::",vehicleData);
       new SuccessResponse({
         message: "Vehicle retrieved successfully",
         metadata: vehicleData,

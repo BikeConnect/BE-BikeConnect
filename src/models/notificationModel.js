@@ -38,6 +38,7 @@ const notificationSchema = new Schema(
         "CONTRACT_REJECTED",
         "CONTRACT_MODIFIED",
         "CONTRACT_COMPLETED",
+        "CONTRACT_EXPIRED",
         "MODIFICATION_REQUESTED",
         "MODIFICATION_APPROVED",
         "MODIFICATION_REJECTED",

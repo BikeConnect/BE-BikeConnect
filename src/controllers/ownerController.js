@@ -208,7 +208,7 @@ const get_customer_booking_request = async (req, res) => {
     const bookings = await contractModel
       .find({
         ownerId: id,
-        status: "draft",
+        status: "pending",
         'ownerConfirmed.status': false,
       })
       .populate("customerId", "name email phone")

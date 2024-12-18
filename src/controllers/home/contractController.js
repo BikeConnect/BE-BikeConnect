@@ -113,7 +113,7 @@ const deleteContract = async (req, res) => {
 
 const confirmContract = async (req, res) => {
   const { contractId } = req.params;
-  const { isConfirmed, rejectReason } = req.body;
+  const { isConfirmed, rejectReason, customerPhone } = req.body;
   const userId = req.id;
   const userRole = req.role;
 
@@ -130,63 +130,32 @@ const confirmContract = async (req, res) => {
       });
     }
 
-    if (userRole === "owner") {
-      if (!isConfirmed) {
-        contract.status = "cancelled";
-        contract.ownerConfirmed = {
-          status: false,
-          rejectionReason: rejectReason,
-          confirmedAt: new Date(),
-        };
-
-        await contract.save();
-
-        await notificationService.createNotification({
-          noti_type: "contract",
-          noti_senderId: userId,
-          senderType: "owner",
-          noti_link: contractId,
-          noti_receiverId: contract.customerId,
-          noti_content: `Yêu cầu thuê xe đã bị từ chối. Lý do: ${rejectReason}`,
-          contractId: contractId,
-          actionType: "CONTRACT_REJECTED",
-        });
-
-        return responseReturn(res, 200, {
-          message: "Contract rejected successfully",
-          contract,
-        });
-      } else {
-        contract.ownerConfirmed = {
+    if (userRole === "customer") {
+      if (isConfirmed) {
+        console.log("working.....");
+        contract.customerConfirmed = {
           status: true,
           confirmedAt: new Date(),
         };
         contract.status = "pending";
         contract.expiryTime = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
+        if (customerPhone) {
+          contract.contractPhone = customerPhone;
+        }
+        console.log("customerPhone::::",customerPhone);
+        console.log("contractPhone::::",contract.contractPhone);
         await contract.save();
-
-        await notificationService.createNotification({
-          noti_type: "contract",
-          noti_senderId: userId,
-          senderType: "owner",
-          noti_link: contractId,
-          noti_receiverId: contract.customerId,
-          noti_content:
-            "Chủ xe đã chấp nhận yêu cầu, vui lòng xác nhận trong vòng 24h",
-          contractId: contractId,
-          actionType: "CONTRACT_ACCEPTED",
-        });
       }
     }
 
-    if (userRole === "customer") {
-      contract.customerConfirmed = {
+    if (userRole === "owner") {
+      console.log("working22222.....");
+      contract.ownerConfirmed = {
         status: isConfirmed,
         rejectionReason: isConfirmed ? null : rejectReason,
         confirmedAt: new Date(),
       };
-
       if (isConfirmed && contract.ownerConfirmed.status) {
         contract.status = "active";
         const booking = await bookingModel.create({
@@ -199,14 +168,16 @@ const confirmContract = async (req, res) => {
           status: "accepted",
         });
 
-        await vehicleModel.findByIdAndUpdate(contract.vehicleId, {
-          availability_status: "rented",
-        });
+        const updatedVehicle = await vehicleModel.findByIdAndUpdate(
+          contract.vehicleId,
+          { availability_status: "rented" },
+          { new: true }
+        );
 
         const notificationData = {
           noti_type: "contract",
           noti_senderId: userId,
-          senderType: "customer",
+          senderType: "owner",
           noti_link: contractId,
           noti_receiverId: contract.ownerId,
           noti_content: "Khách hàng đã xác nhận, hợp đồng đã được kích hoạt",
@@ -231,6 +202,7 @@ const confirmContract = async (req, res) => {
       contract,
     });
   } catch (error) {
+    console.log(error.message);
     responseReturn(res, 500, { error: error.message });
   }
 };
@@ -241,23 +213,23 @@ const handleExpiredContract = async (contract) => {
 
   await Promise.all([
     notificationService.createNotification({
-      type: "contract",
-      senderId: contract._id,
-      senderType: "system",
-      link: contract._id,
-      receiverId: contract.customerId,
-      content: "Hợp đồng đã hết hạn do không được xác nhận kịp thời",
-      contractId: contract._id,
+      noti_type: "contract",
+      noti_senderId: convertToObjectIdMongodb(contract._id),
+      senderType: "owner",
+      noti_link: convertToObjectIdMongodb(contract._id),
+      noti_receiverId: convertToObjectIdMongodb(contract.customerId),
+      noti_content: "Hợp đồng đã hết hạn do không được xác nhận kịp thời",
+      contractId: convertToObjectIdMongodb(contract._id),
       actionType: "CONTRACT_EXPIRED",
     }),
     notificationService.createNotification({
-      type: "contract",
-      senderId: contract._id,
-      senderType: "system",
-      link: contract._id,
-      receiverId: contract.ownerId,
-      content: "Hợp đồng đã hết hạn do không được xác nhận kịp thời",
-      contractId: contract._id,
+      noti_type: "contract",
+      noti_senderId: convertToObjectIdMongodb(contract._id),
+      senderType: "owner",
+      noti_link: convertToObjectIdMongodb(contract._id),
+      noti_receiverId: convertToObjectIdMongodb(contract.ownerId),
+      noti_content: "Hợp đồng đã hết hạn do không được xác nhận kịp thời",
+      contractId: convertToObjectIdMongodb(contract._id),
       actionType: "CONTRACT_EXPIRED",
     }),
   ]);

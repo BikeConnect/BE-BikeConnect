@@ -21,7 +21,7 @@ const customer_submit_booking = async (req, res) => {
 
     if (vehicleData.availability_status === "rented") {
       return responseReturn(res, 400, {
-        message: "Vehicle is not available for booking",
+        message: "Xe đã được thuê, vui lòng chọn xe khác",
       });
     }
 

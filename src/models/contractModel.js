@@ -68,6 +68,10 @@ const contractSchema = new Schema(
         return new Date(Date.now() + 24 * 60 * 60 * 1000);
       },
     },
+    contractPhone:{
+      type: Number,
+      default: null,
+    },
     modificationHistory: [
       {
         modifiedBy: {

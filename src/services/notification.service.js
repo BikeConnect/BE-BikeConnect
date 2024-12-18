@@ -49,7 +49,7 @@ const pushNotification = async ({
       noti_content = "Bạn có một đánh giá mới cho bài viết của mình";
       break;
   }
-  
+
   if (!link) {
     throw new Error("noti_link is required");
   }
@@ -141,20 +141,20 @@ const createNotification = async (data) => {
   return notification;
 };
 
-const getAllNotifications = async ({ sort = 'desc' }) => {
-  const sortOrder = sort === 'desc' ? -1 : 1;
+const getAllNotifications = async ({ sort = "desc" }) => {
+  const sortOrder = sort === "desc" ? -1 : 1;
 
   const notifications = await NOTI.aggregate([
     {
-      $sort: { createdAt: sortOrder }
+      $sort: { createdAt: sortOrder },
     },
     {
       $lookup: {
-        from: 'contracts',
-        localField: 'contractId',
-        foreignField: '_id',
-        as: 'contract'
-      }
+        from: "contracts",
+        localField: "contractId",
+        foreignField: "_id",
+        as: "contract",
+      },
     },
     {
       $project: {
@@ -167,15 +167,119 @@ const getAllNotifications = async ({ sort = 'desc' }) => {
         isRead: 1,
         actionType: 1,
         createdAt: 1,
-        contract: { $arrayElemAt: ['$contract', 0] }
-      }
-    }
+        contract: { $arrayElemAt: ["$contract", 0] },
+      },
+    },
   ]);
 
   return {
     notifications,
-    total: notifications.length
+    total: notifications.length,
   };
+};
+
+const getOwnerNotifications = async (ownerId) => {
+  try {
+    const notifications = await NOTI.aggregate([
+      {
+        $match: {
+          noti_receiverId: convertToObjectIdMongodb(ownerId),
+          senderType: "customer",
+        },
+      },
+      {
+        $lookup: {
+          from: "contracts",
+          localField: "contractId",
+          foreignField: "_id",
+          as: "contract",
+        },
+      },
+      {
+        $lookup: {
+          from: "customers",
+          localField: "noti_senderId",
+          foreignField: "_id",
+          as: "sender",
+        },
+      },
+      {
+        $sort: { createdAt: -1 },
+      },
+      {
+        $project: {
+          noti_type: 1,
+          noti_content: 1,
+          noti_status: 1,
+          isRead: 1,
+          createdAt: 1,
+          actionType: 1,
+          sender: {
+            $arrayElemAt: ["$sender", 0],
+          },
+          contract: {
+            $arrayElemAt: ["$contract", 0],
+          },
+        },
+      },
+    ]);
+
+    return notifications;
+  } catch (error) {
+    throw new Error(`Error getting owner notifications: ${error.message}`);
+  }
+};
+
+const getCustomerNotifications = async (customerId) => {
+  try {
+    const notifications = await NOTI.aggregate([
+      {
+        $match: {
+          noti_receiverId: convertToObjectIdMongodb(customerId),
+          senderType: "owner",
+        },
+      },
+      {
+        $lookup: {
+          from: "contracts",
+          localField: "contractId",
+          foreignField: "_id",
+          as: "contract",
+        },
+      },
+      {
+        $lookup: {
+          from: "owners",
+          localField: "noti_senderId",
+          foreignField: "_id",
+          as: "sender",
+        },
+      },
+      {
+        $sort: { createdAt: -1 },
+      },
+      {
+        $project: {
+          noti_type: 1,
+          noti_content: 1,
+          noti_status: 1,
+          isRead: 1,
+          createdAt: 1,
+          actionType: 1,
+          sender: {
+            $arrayElemAt: ["$sender", 0],
+          },
+          contract: {
+            $arrayElemAt: ["$contract", 0],
+          },
+        },
+      },
+    ]);
+
+    return notifications;
+  } catch (error) {
+    throw new Error(`Error getting customer notifications: ${error.message}`);
+  }
 };
 
 module.exports = {
@@ -185,4 +289,6 @@ module.exports = {
   getUnreadCount,
   createNotification,
   getAllNotifications,
+  getOwnerNotifications,
+  getCustomerNotifications,
 };

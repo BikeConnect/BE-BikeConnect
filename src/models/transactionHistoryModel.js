@@ -22,10 +22,6 @@ const transactionHistorySchema = new Schema(
       type: Number,
       required: true,
     },
-    paymentStatus: {
-      type: String,
-      required: true,
-    },
     rentalDuration: {
       type: Number,
       required: true,

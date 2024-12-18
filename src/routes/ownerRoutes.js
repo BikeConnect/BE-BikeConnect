@@ -28,6 +28,8 @@ router.get("/owner/get-owner-vehicles", verifyToken, ownerController.get_owner_v
 
 router.put("/owner/update-vehicle-status/:vehicleId", verifyToken, ownerController.update_vehicle_status);
 
+router.get("/owner/vehicle-history", verifyToken, ownerController.get_owner_booking_history);
+
 // router.put(
 //   "/owner/update-profile",
 //   verifyToken,

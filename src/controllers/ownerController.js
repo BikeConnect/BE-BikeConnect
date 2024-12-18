@@ -454,6 +454,69 @@ const update_vehicle_status = async (req, res, next) => {
   }
 };
 
+const get_owner_booking_history = async (req, res) => {
+  try {
+    const { id } = req;
+    const page = parseInt(req.query.page) || 1;
+    const limit = 5;
+    const skip = (page - 1) * limit;
+
+    const totalBookings = await bookingModel.countDocuments({
+      vehicleId: { $in: await vehicle.find({ ownerId: id }).distinct('_id') }
+    });
+
+    const bookings = await bookingModel
+      .find({
+        vehicleId: { $in: await vehicle.find({ ownerId: id }).distinct('_id') }
+      })
+      .populate('vehicleId', 'brand model license price')
+      .populate('contractId', 'totalAmount')
+      .select('status startDate endDate totalPrice')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean();
+
+    const formattedBookings = bookings.map(booking => ({
+      _id: booking._id,
+      vehicleInfo: {
+        brand: booking.vehicleId?.brand || '',
+        model: booking.vehicleId?.model || '',
+        license: booking.vehicleId?.license || '',
+      },
+      bookingStatus: booking.status,
+      startDate: booking.startDate,
+      endDate: booking.endDate,
+      totalPrice: booking.totalPrice || 0,
+    }));
+
+    const totalPages = Math.ceil(totalBookings / limit);
+    const hasNextPage = page < totalPages;
+    const hasPrevPage = page > 1;
+
+    // Calculate total earnings
+    const totalEarnings = formattedBookings.reduce((sum, booking) => {
+      return sum + (booking.contractAmount || 0);
+    }, 0);
+
+    responseReturn(res, 200, {
+      bookings: formattedBookings,
+      totalEarnings,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalItems: totalBookings,
+        itemsPerPage: limit,
+        hasNextPage,
+        hasPrevPage
+      }
+    });
+  } catch (error) {
+    console.error(error);
+    responseReturn(res, 500, { error: error.message });
+  }
+};
+
 module.exports = {
   add_owner_profile,
   owner_update_profile,
@@ -468,4 +531,5 @@ module.exports = {
   get_owner_all_bookings_history,
   get_owner_vehicles,
   update_vehicle_status,
+  get_owner_booking_history,
 };

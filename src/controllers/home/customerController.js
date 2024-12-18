@@ -15,7 +15,10 @@ const {
   sendResetSuccessEmail,
 } = require("../../sendmail/email");
 const { formidable } = require("formidable");
-const { detectImageManipulation } = require("../../services/imageAnalysis.service");
+const {
+  detectImageManipulation,
+} = require("../../services/imageAnalysis.service");
+const bookingModel = require("../../models/bookingModel");
 const cloudinary = require("cloudinary").v2;
 
 const customer_register = async (req, res) => {
@@ -129,7 +132,8 @@ const customer_login = async (req, res) => {
 
 const customer_logout = async (req, res) => {
   try {
-    const token = req.cookies.accessToken || req.headers.authorization?.split(" ")[1];
+    const token =
+      req.cookies.accessToken || req.headers.authorization?.split(" ")[1];
     if (token) {
       await userRefreshTokenModel.deleteOne({ userId: req.id });
     }
@@ -137,18 +141,17 @@ const customer_logout = async (req, res) => {
     res.clearCookie("accessToken", {
       httpOnly: true,
       path: "/",
-      sameSite: "lax"
+      sameSite: "lax",
     });
 
-    return responseReturn(res, 200, { 
+    return responseReturn(res, 200, {
       success: true,
-      message: "Đăng xuất thành công" 
+      message: "Đăng xuất thành công",
     });
-
   } catch (error) {
-    return responseReturn(res, 500, { 
+    return responseReturn(res, 500, {
       success: false,
-      error: "Có lỗi xảy ra khi đăng xuất" 
+      error: "Có lỗi xảy ra khi đăng xuất",
     });
   }
 };
@@ -423,8 +426,14 @@ const analyzeIdentityCard = async (req, res) => {
   const { id } = req;
   try {
     const customer = await customerModel.findById(id);
-    if (!customer || !customer.identityCard || customer.identityCard.length === 0) {
-      return responseReturn(res, 404, { error: "No identity card images found" });
+    if (
+      !customer ||
+      !customer.identityCard ||
+      customer.identityCard.length === 0
+    ) {
+      return responseReturn(res, 404, {
+        error: "No identity card images found",
+      });
     }
 
     const analysisResults = await Promise.all(
@@ -432,22 +441,84 @@ const analyzeIdentityCard = async (req, res) => {
         const analysis = await detectImageManipulation(card.url);
         return {
           imageUrl: card.url,
-          ...analysis
+          ...analysis,
         };
       })
     );
 
-    const manipulatedImages = analysisResults.filter(result => result.isManipulated);
+    const manipulatedImages = analysisResults.filter(
+      (result) => result.isManipulated
+    );
 
     responseReturn(res, 200, {
       message: "Identity card analysis completed",
       results: analysisResults,
       hasSuspiciousImages: manipulatedImages.length > 0,
-      manipulatedImages
+      manipulatedImages,
+    });
+  } catch (error) {
+    console.error("Error analyzing identity card:", error);
+    responseReturn(res, 500, { error: error.message });
+  }
+};
+
+const get_customer_booking_history = async (req, res) => {
+  try {
+    const { id } = req;
+    const page = parseInt(req.query.page) || 1;
+    const limit = 5;
+    const skip = (page - 1) * limit;
+
+    const totalBookings = await bookingModel.countDocuments({
+      customerId: id,
     });
 
+    const bookings = await bookingModel
+      .find({ customerId: id })
+      .populate("vehicleId", "brand model license price")
+      .populate("contractId", "totalAmount")
+      .select("status startDate endDate totalPrice")
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean();
+
+    const formattedBookings = bookings.map((booking) => ({
+      _id: booking._id,
+      vehicleInfo: {
+        brand: booking.vehicleId?.brand || "",
+        model: booking.vehicleId?.model || "",
+        license: booking.vehicleId?.license || "",
+      },
+      bookingStatus: booking.status,
+      startDate: booking.startDate,
+      endDate: booking.endDate,
+      totalPrice: booking.totalPrice || 0,
+    }));
+
+    const totalPages = Math.ceil(totalBookings / limit);
+    const hasNextPage = page < totalPages;
+    const hasPrevPage = page > 1;
+
+    // Calculate total spending
+    const totalSpending = formattedBookings.reduce((sum, booking) => {
+      return sum + (booking.contractAmount || 0);
+    }, 0);
+
+    responseReturn(res, 200, {
+      bookings: formattedBookings,
+      totalSpending,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalItems: totalBookings,
+        itemsPerPage: limit,
+        hasNextPage,
+        hasPrevPage,
+      },
+    });
   } catch (error) {
-    console.error('Error analyzing identity card:', error);
+    console.error(error);
     responseReturn(res, 500, { error: error.message });
   }
 };
@@ -464,4 +535,5 @@ module.exports = {
   upload_customer_profile_image,
   upload_customer_identity_card,
   analyzeIdentityCard,
+  get_customer_booking_history,
 };

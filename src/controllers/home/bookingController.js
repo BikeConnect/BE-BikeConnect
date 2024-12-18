@@ -1,5 +1,6 @@
 "use strict";
 
+const bookingModel = require("../../models/bookingModel");
 const contractModel = require("../../models/contractModel");
 const vehicleModel = require("../../models/vehicleModel");
 const notificationService = require("../../services/notification.service");
@@ -25,11 +26,15 @@ const customer_submit_booking = async (req, res) => {
       });
     }
 
-    const start = moment(startDate, "DD/MM/YYYY").utcOffset('+07:00').startOf('day');
-    const end = moment(endDate, "DD/MM/YYYY").utcOffset('+07:00').startOf('day');
+    const start = moment(startDate, "DD/MM/YYYY")
+      .utcOffset("+07:00")
+      .startOf("day");
+    const end = moment(endDate, "DD/MM/YYYY")
+      .utcOffset("+07:00")
+      .startOf("day");
 
-    const vehicleStartDate = moment(vehicleData.startDate).startOf('day');
-    const vehicleEndDate = moment(vehicleData.endDate).startOf('day');
+    const vehicleStartDate = moment(vehicleData.startDate).startOf("day");
+    const vehicleEndDate = moment(vehicleData.endDate).startOf("day");
 
     if (start < vehicleStartDate || end > vehicleEndDate) {
       return responseReturn(res, 400, {
@@ -45,7 +50,9 @@ const customer_submit_booking = async (req, res) => {
     while (currentDate <= end) {
       if (!availableDatesStr.includes(currentDate.format("DD/MM/YYYY"))) {
         return responseReturn(res, 400, {
-          message: `Ngày ${currentDate.format("DD/MM/YYYY")} không có sẵn để đặt`,
+          message: `Ngày ${currentDate.format(
+            "DD/MM/YYYY"
+          )} không có sẵn để đặt`,
         });
       }
       currentDate.add(1, "days");
@@ -166,8 +173,217 @@ const check_specific_booking = async (req, res) => {
   }
 };
 
+const getAllBookings = async (req, res) => {
+  try {
+    const { status } = req.query;
+    const page = parseInt(req.query.page) || 1;
+    const limit = 3;
+    const skip = (page - 1) * limit;
+
+    let query = {};
+    if (status && status !== "all") {
+      query.status = status;
+    }
+
+    console.log("Initial Query:", query);
+
+    const bookings = await bookingModel
+      .find(query)
+      .populate({
+        path: "customerId",
+        model: "customers",
+        select: "name email phone image currentAddress",
+      })
+      .populate({
+        path: "vehicleId",
+        model: "Vehicle",
+        select:
+          "brand model price license discount images address availability_status startDate endDate ownerId",
+        populate: {
+          path: "ownerId",
+          model: "Owner",
+          select: "name email phone subInfo",
+        },
+      })
+      .populate(
+        "contractId",
+        "totalAmount terms status customerConfirmed ownerConfirmed"
+      )
+      .select("-__v")
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean();
+
+    console.log("Raw Bookings Data:", JSON.stringify(bookings, null, 2));
+
+    const formattedBookings = bookings.map((booking) => {
+      // Log để debug
+      console.log(`Processing booking ID: ${booking._id}`);
+      console.log("Vehicle Data:", booking.vehicleId);
+      if (booking.vehicleId?.ownerId) {
+        console.log("Owner Data:", booking.vehicleId.ownerId);
+      }
+
+      return {
+        _id: booking._id,
+        customer: booking.customerId
+          ? {
+              id: booking.customerId._id,
+              name: booking.customerId.name || "Unknown",
+              email: booking.customerId.email || "N/A",
+              phone: booking.customerId.phone || "N/A",
+              image: booking.customerId.image || "N/A",
+              address: booking.customerId.currentAddress || "N/A",
+            }
+          : null,
+        vehicle: booking.vehicleId
+          ? {
+              id: booking.vehicleId._id,
+              brand: booking.vehicleId.brand,
+              model: booking.vehicleId.model,
+              price: booking.vehicleId.price,
+              discount: booking.vehicleId.discount,
+              license: booking.vehicleId.license,
+              images: booking.vehicleId.images || [],
+              address: booking.vehicleId.address,
+              availability_status: booking.vehicleId.availability_status,
+              owner: booking.vehicleId.ownerId
+                ? {
+                    id: booking.vehicleId.ownerId._id,
+                    name: booking.vehicleId.ownerId.name,
+                    email: booking.vehicleId.ownerId.email,
+                    phone: booking.vehicleId.ownerId.phone,
+                    address:
+                      booking.vehicleId.ownerId.subInfo?.address || "N/A",
+                    district:
+                      booking.vehicleId.ownerId.subInfo?.district || "N/A",
+                    city: booking.vehicleId.ownerId.subInfo?.city || "N/A",
+                  }
+                : null,
+            }
+          : null,
+        contract: booking.contractId
+          ? {
+              id: booking.contractId._id,
+              totalAmount: booking.contractId.totalAmount,
+              terms: booking.contractId.terms,
+              status: booking.contractId.status,
+              customerConfirmed: booking.contractId.customerConfirmed,
+              ownerConfirmed: booking.contractId.ownerConfirmed,
+            }
+          : null,
+        bookingDetails: {
+          startDate: booking.startDate,
+          endDate: booking.endDate,
+          totalPrice: booking.totalPrice,
+          status: booking.status,
+        },
+      };
+    });
+
+    console.log(
+      "Formatted Bookings:",
+      JSON.stringify(formattedBookings, null, 2)
+    );
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        bookings: formattedBookings,
+        pagination: {
+          currentPage: page,
+          totalPages: Math.ceil(
+            (await bookingModel.countDocuments(query)) / limit
+          ),
+          totalItems: await bookingModel.countDocuments(query),
+          itemsPerPage: limit,
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Get all bookings error:", error);
+    console.error("Error stack:", error.stack);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
+const getBookingsByStatus = async (req, res) => {
+  try {
+    const statuses = [
+      "pending",
+      "accepted",
+      "rejected",
+      "completed",
+      "cancelled",
+    ];
+    const bookingsByStatus = {};
+
+    await Promise.all(
+      statuses.map(async (status) => {
+        const bookings = await bookingModel
+          .find({ status })
+          .populate("customerId", "name email phone")
+          .populate("vehicleId", "brand model price license")
+          .populate("contractId", "totalAmount terms status")
+          .select("-__v")
+          .sort({ createdAt: -1 })
+          .limit(10)
+          .lean();
+
+        bookingsByStatus[status] = bookings.map((booking) => ({
+          _id: booking._id,
+          customer: {
+            id: booking.customerId._id,
+            name: booking.customerId.name,
+            email: booking.customerId.email,
+            phone: booking.customerId.phone,
+          },
+          vehicle: {
+            id: booking.vehicleId._id,
+            brand: booking.vehicleId.brand,
+            model: booking.vehicleId.model,
+            price: booking.vehicleId.price,
+            license: booking.vehicleId.license,
+          },
+          contract: {
+            id: booking.contractId._id,
+            totalAmount: booking.contractId.totalAmount,
+            terms: booking.contractId.terms,
+            status: booking.contractId.status,
+          },
+          startDate: booking.startDate,
+          endDate: booking.endDate,
+          totalPrice: booking.totalPrice,
+          status: booking.status,
+          createdAt: booking.createdAt,
+          updatedAt: booking.updatedAt,
+        }));
+      })
+    );
+
+    return res.status(200).json({
+      success: true,
+      data: bookingsByStatus,
+    });
+  } catch (error) {
+    console.error("Get bookings by status error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   customer_submit_booking,
   get_bookings,
   check_specific_booking,
+  getAllBookings,
+  getBookingsByStatus,
 };

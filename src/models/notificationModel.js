@@ -102,4 +102,26 @@ notificationSchema.statics.createNotification = async function (data) {
   return notification;
 };
 
+notificationSchema.statics.getOwnerNotifications = async function (ownerId) {
+  const notifications = await this.find({
+    noti_receiverId: ownerId,
+    senderType: "customer"
+  })
+  .sort({ createdAt: -1 })
+  .lean();
+  
+  return notifications;
+};
+
+notificationSchema.statics.getCustomerNotifications = async function (customerId) {
+  const notifications = await this.find({
+    noti_receiverId: customerId,
+    senderType: "owner"
+  })
+  .sort({ createdAt: -1 })
+  .lean();
+  
+  return notifications;
+};
+
 module.exports = model(DOCUMENT_NAME, notificationSchema);

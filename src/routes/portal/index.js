@@ -14,14 +14,6 @@ router.get("/sorted-by-distance", async (req, res) => {
   await vehicleController.getVehiclesSortedByDistance(req, res);
 });
 
-router.get(
-  "",
-  asyncHandler(notificationController.listNotiByCus)
-);
-
-router.get(
-  "/all-notifications",
-  asyncHandler(notificationController.getAllNotifications)
-);
+router.get("", asyncHandler(notificationController.listNotiByCus));
 
 module.exports = router;

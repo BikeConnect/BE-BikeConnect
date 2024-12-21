@@ -16,7 +16,7 @@ const contractRoutes = require("./routes/home/contractRoutes");
 const reviewRoutes = require("./routes/home/reviewRoutes");
 const bookingRoutes = require("./routes/home/bookingRoutes");
 const chatRoutes = require("./routes/home/chatRoutes");
-const notificationRoutes = require("./routes/notify/ịndex");
+const notificationRoutes = require("./routes/notify/index");
 
 app.use(morgan("dev"));
 app.use(compression());
@@ -30,7 +30,7 @@ app.use(
       "Content-Type",
       "Authorization",
     ],
-    methods: "GET, POST, PUT, DELETE",
+    methods: "GET, POST, PUT, DELETE, PATCH",
   })
 );
 app.use(express.json());

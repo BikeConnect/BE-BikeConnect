@@ -141,7 +141,7 @@ const owner_login = async (req, res) => {
           message: "Login Successfully",
         });
       } else {
-        return responseReturn(res, 404, { error: "Password Wrong!" });
+        return responseReturn(res, 404, { error: "Sai mật khẩu!" });
       }
     } else {
       return responseReturn(res, 404, { error: "Email Not Found" });

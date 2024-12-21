@@ -46,6 +46,10 @@ const customerSchema = new Schema(
       type: String,
       default: "",
     },
+    alterAddress: {
+      type: String,
+      default: "",
+    },
     resetPasswordToken: String,
     resetPasswordExpiresAt: Date,
     verificationToken: String,

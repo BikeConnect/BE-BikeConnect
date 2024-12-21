@@ -523,6 +523,28 @@ const get_customer_booking_history = async (req, res) => {
   }
 };
 
+const customer_alter_address = async (req, res) => {
+  try {
+    const { customerId, alterAddress } = req.body;
+    const updatedCustomer = await customerModel.findByIdAndUpdate(
+      customerId,
+      { alterAddress },
+      { new: true }
+    );
+
+    if (!updatedCustomer) {
+      return responseReturn(res, 404, { error: "Customer not found" });
+    }
+
+    responseReturn(res, 200, {
+      message: "Alter Address Updated Successfully",
+      userInfo: updatedCustomer,
+    });
+  } catch (error) {
+    responseReturn(res, 500, { error: error.message });
+  }
+};
+
 module.exports = {
   customer_register,
   customer_login,
@@ -536,4 +558,5 @@ module.exports = {
   upload_customer_identity_card,
   analyzeIdentityCard,
   get_customer_booking_history,
+  customer_alter_address
 };

@@ -116,20 +116,17 @@ const confirmContract = async (req, res) => {
   const { isConfirmed, rejectReason, customerPhone } = req.body;
   const userId = req.id;
   const userRole = req.role;
-
   try {
     const contract = await contractModel.findById(contractId);
     if (!contract) {
       return responseReturn(res, 404, { message: "Contract not found" });
     }
-
-    if (moment().isAfter(contract.expiryTime)) {
-      await handleExpiredContract(contract);
-      return responseReturn(res, 400, {
-        message: "Contract expired",
-      });
-    }
-
+    // if (moment().isAfter(contract.expiryTime)) {
+    //   await handleExpiredContract(contract);
+    //   return responseReturn(res, 400, {
+    //     message: "Contract expired",
+    //   });
+    // }
     if (userRole === "customer") {
       if (isConfirmed) {
         console.log("working.....");
@@ -143,17 +140,17 @@ const confirmContract = async (req, res) => {
         if (customerPhone) {
           contract.contractPhone = customerPhone;
         }
-        console.log("customerPhone::::",customerPhone);
-        console.log("contractPhone::::",contract.contractPhone);
+        console.log("customerPhone::::", customerPhone);
+        console.log("contractPhone::::", contract.contractPhone);
         await contract.save();
       }
     }
-
     if (userRole === "owner") {
       console.log("working22222.....");
       contract.ownerConfirmed = {
         status: isConfirmed,
-        rejectionReason: isConfirmed ? null : rejectReason,
+        rejectionReason: !isConfirmed ? rejectReason : null,
+        // rejectionReason: isConfirmed ? null : rejectReason,
         confirmedAt: new Date(),
       };
       if (isConfirmed && contract.ownerConfirmed.status) {
@@ -188,8 +185,10 @@ const confirmContract = async (req, res) => {
         const newNotification = await notificationService.createNotification(
           notificationData
         );
-      } else if (!isConfirmed) {
+      }
+      if (!isConfirmed) {
         contract.status = "cancelled";
+        await contract.save();
       }
     }
 
@@ -298,7 +297,7 @@ const getCustomerBookingRequest = async (req, res) => {
     const contracts = await contractModel
       .find({
         ownerId: ownerId,
-        status: "draft",
+        status: "pending",
         "ownerConfirmed.status": false,
         "customerConfirmed.status": true,
       })

@@ -70,7 +70,7 @@ const customer_submit_booking = async (req, res) => {
       endDate: end.toDate(),
       totalAmount: totalPrice,
       terms: "Áp dụng tiêu chuẩn thuê và các điều khoản",
-      status: "draft",
+      status: "pending",
       customerConfirmed: {
         status: false,
       },

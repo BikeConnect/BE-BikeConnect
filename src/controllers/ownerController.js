@@ -201,7 +201,7 @@ const get_customer_booking_request = async (req, res) => {
 
     const totalRequests = await contractModel.countDocuments({
       ownerId: id,
-      status: "draft",
+      status: "pending",
       'ownerConfirmed.status': false,
     });
 
@@ -211,8 +211,8 @@ const get_customer_booking_request = async (req, res) => {
         status: "pending",
         'ownerConfirmed.status': false,
       })
-      .populate("customerId", "name email phone")
-      .populate("vehicleId", "brand model price license")
+      .populate("customerId", "name email phone alterAddress")
+      .populate("vehicleId", "brand model price license address")
       .select(
         "startDate endDate rentalDays customerId vehicleId totalAmount status"
       )
@@ -232,13 +232,15 @@ const get_customer_booking_request = async (req, res) => {
         vehicleBrand: booking.vehicleId?.brand || "",
         vehiclePrice: booking.vehicleId?.price || 0,
         vehicleLicense: booking.vehicleId?.license || "",
+        vehicleAddress: booking.vehicleId?.address || "",
+        customerAlterAddress: booking.customerId?.alterAddress || "",
         startDate: booking.startDate,
         endDate: booking.endDate,
         rentalDays: booking.rentalDays,
         totalAmount: booking.totalAmount,
         status: booking.status,
       }));
-
+    // console.log("formattedBookings::::",formattedBookings);
     const totalPages = Math.ceil(totalRequests / limit);
     const hasNextPage = page < totalPages;
     const hasPrevPage = page > 1;
@@ -270,7 +272,7 @@ const get_owner_all_bookings_history = async (req, res) => {
     const totalBookings = await contractModel.countDocuments({
       ownerId: id,
       status: {
-        $ne: "draft",
+        $ne: "pending",
       },
     });
 
@@ -279,7 +281,7 @@ const get_owner_all_bookings_history = async (req, res) => {
       .find({
         ownerId: id,
         status: {
-          $ne: "draft",
+          $ne: "pending",
         },
       })
       .populate("customerId", "name email phone")

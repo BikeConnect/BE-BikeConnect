@@ -159,24 +159,6 @@ const getContractNotifications = async (contractId) => {
   }
 };
 
-// const createNotification = async (data) => {
-//   // const notification = await NOTI.create({
-//   //   noti_type: data.type,
-//   //   noti_senderId: data.senderId,
-//   //   senderType: data.senderType,
-//   //   noti_link: data.link,
-//   //   noti_receiverId: data.receiverId,
-//   //   noti_content: data.content,
-//   //   noti_options: data.options || {},
-//   //   contractId: data.contractId,
-//   //   actionType: data.actionType,
-//   //   isRead: false,
-//   //   noti_status: "unread",
-//   // });
-//   const notification = await NOTI.createNotification(data);
-//   return notification;
-// };
-
 const createNotification = async (data) => {
   try {
     const notification = await NOTI.createNotification(data);

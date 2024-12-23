@@ -59,6 +59,40 @@ io.on("connection", (soc) => {
     io.emit("active_owner", allOwners);
   });
 
+  // notifications
+  soc.on("join_notifications", (userId, userRole) => {
+    const room = `${userRole}_${userId}`;
+    soc.join(room);
+    console.log(`User joined room: ${room}`);
+  });
+
+  //contract notifications
+  soc.on(
+    "contract_notification",
+    ({ senderId, receiverId, receiverRole, notification }) => {
+      const receiverRoom = `${receiverRole}_${receiverId}`;
+      soc.to(receiverRoom).emit("new_notification", notification);
+    }
+  );
+
+  //booking notifications
+  soc.on(
+    "booking_notification",
+    ({ senderId, receiverId, receiverRole, notification }) => {
+      const receiverRoom = `${receiverRole}_${receiverId}`;
+      soc.to(receiverRoom).emit("new_notification", notification);
+    }
+  );
+
+  //review notifications
+  soc.on(
+    "review_notification",
+    ({ senderId, receiverId, receiverRole, notification }) => {
+      const receiverRoom = `${receiverRole}_${receiverId}`;
+      soc.to(receiverRoom).emit("new_notification", notification);
+    }
+  );
+
   //gui message tu phia owner
   soc.on("send_owner_message", (msg) => {
     const customer = findCustomer(msg.receiverId);
@@ -80,7 +114,6 @@ io.on("connection", (soc) => {
     remove(soc.id);
     io.emit("active_owner", allOwners);
   });
-
 });
 
 const server = serverIO.listen(port, () => {
@@ -92,3 +125,5 @@ process.on("SIGINT", () => {
     console.log("Server has been closed");
   });
 });
+
+module.exports = { io, server: serverIO };

@@ -2,6 +2,8 @@
 
 const NOTI = require("../models/notificationModel");
 const { convertToObjectIdMongodb } = require("../utils");
+const contractModel = require("../models/contractModel");
+const { io } = require("../server");
 
 const pushNotification = async ({
   type = "booking",
@@ -14,14 +16,6 @@ const pushNotification = async ({
   actionType = null,
 }) => {
   let noti_content;
-
-  // if (type === "booking") {
-  //   noti_content = "Yêu cầu đặt xe của bạn đã được gửi";
-  // } else if (type === "contract") {
-  //   noti_content = "Hợp đồng thuê xe đã được tạo";
-  // } else if (type === "review") {
-  //   noti_content = "Bạn có một đánh giá mới cho bài viết của mình";
-  // }
 
   switch (type) {
     case "booking":
@@ -98,7 +92,25 @@ const listNotiByCus = async ({ cusId = 1, type = "ALL", isReal = false }) => {
 };
 
 const markAsRead = async (notifcationId) => {
-  const notification = await NOTI.findById(notifcationId);
+  const notification = await NOTI.findById(notifcationId)
+    .populate({
+      path: "contractId",
+      populate: [
+        {
+          path: "vehicleId",
+          select: "brand model license price images",
+        },
+        {
+          path: "customerId",
+          select: "name phone email",
+        },
+        {
+          path: "ownerId",
+          select: "name phone email",
+        },
+      ],
+    })
+    .populate("noti_senderId", "name image");
   if (!notifcationId) throw new Error("Notifcation not found");
 
   notification.isRead = true;
@@ -116,29 +128,82 @@ const getUnreadCount = async (receiverId) => {
 };
 
 const getContractNotifications = async (contractId) => {
-  const notifications = await NOTI.find({
-    noti_type: "contract",
-    contractId: convertToObjectIdMongodb(contractId),
-  }).sort({ createdAt: -1 });
-  return notifications;
+  try {
+    const notifications = await NOTI.find({
+      noti_type: "contract",
+      contractId: convertToObjectIdMongodb(contractId),
+    })
+      .populate({
+        path: "contractId",
+        populate: [
+          {
+            path: "vehicleId",
+            select: "brand model licensePlate price images",
+          },
+          {
+            path: "customerId",
+            select: "name phone email",
+          },
+          {
+            path: "ownerId",
+            select: "name phone email",
+          },
+        ],
+      })
+      .populate("noti_senderId", "name avatar")
+      .sort({ createdAt: -1 });
+
+    return notifications;
+  } catch (error) {
+    throw new Error(`Error getting contract notifications: ${error.message}`);
+  }
 };
 
+// const createNotification = async (data) => {
+//   // const notification = await NOTI.create({
+//   //   noti_type: data.type,
+//   //   noti_senderId: data.senderId,
+//   //   senderType: data.senderType,
+//   //   noti_link: data.link,
+//   //   noti_receiverId: data.receiverId,
+//   //   noti_content: data.content,
+//   //   noti_options: data.options || {},
+//   //   contractId: data.contractId,
+//   //   actionType: data.actionType,
+//   //   isRead: false,
+//   //   noti_status: "unread",
+//   // });
+//   const notification = await NOTI.createNotification(data);
+//   return notification;
+// };
+
 const createNotification = async (data) => {
-  // const notification = await NOTI.create({
-  //   noti_type: data.type,
-  //   noti_senderId: data.senderId,
-  //   senderType: data.senderType,
-  //   noti_link: data.link,
-  //   noti_receiverId: data.receiverId,
-  //   noti_content: data.content,
-  //   noti_options: data.options || {},
-  //   contractId: data.contractId,
-  //   actionType: data.actionType,
-  //   isRead: false,
-  //   noti_status: "unread",
-  // });
-  const notification = await NOTI.createNotification(data);
-  return notification;
+  try {
+    const notification = await NOTI.createNotification(data);
+    if (data.type === "contract" && data.contractId) {
+      const contract = await contractModel.findById(data.contractId);
+      notification.contract = contract;
+    }
+
+    try {
+      if (io) {
+        const receiverRole = data.receiverType;
+        const receiverRoom = `${receiverRole}_${data.receiverId}`;
+
+        io.to(receiverRoom).emit("new_notification", {
+          ...notification.toJSON(),
+          contract: notification.contract,
+          createdAt: new Date(),
+        });
+      }
+    } catch (socketError) {
+      console.error("Socket emission failed:", socketError);
+    }
+
+    return notification;
+  } catch (error) {
+    throw new Error(`Error creating notification: ${error.message}`);
+  }
 };
 
 const getAllNotifications = async ({ sort = "desc" }) => {
@@ -178,107 +243,171 @@ const getAllNotifications = async ({ sort = "desc" }) => {
   };
 };
 
-const getOwnerNotifications = async (ownerId) => {
-  try {
-    const notifications = await NOTI.aggregate([
-      {
-        $match: {
-          noti_receiverId: convertToObjectIdMongodb(ownerId),
-          senderType: "customer",
-        },
-      },
-      {
-        $lookup: {
-          from: "contracts",
-          localField: "contractId",
-          foreignField: "_id",
-          as: "contract",
-        },
-      },
-      {
-        $lookup: {
-          from: "customers",
-          localField: "noti_senderId",
-          foreignField: "_id",
-          as: "sender",
-        },
-      },
-      {
-        $sort: { createdAt: -1 },
-      },
-      {
-        $project: {
-          noti_type: 1,
-          noti_content: 1,
-          noti_status: 1,
-          isRead: 1,
-          createdAt: 1,
-          actionType: 1,
-          sender: {
-            $arrayElemAt: ["$sender", 0],
-          },
-          contract: {
-            $arrayElemAt: ["$contract", 0],
-          },
-        },
-      },
-    ]);
+// const getOwnerNotifications = async (ownerId) => {
+//   try {
+//     const notifications = await NOTI.aggregate([
+//       {
+//         $match: {
+//           noti_receiverId: convertToObjectIdMongodb(ownerId),
+//           senderType: "customer",
+//         },
+//       },
+//       {
+//         $lookup: {
+//           from: "contracts",
+//           localField: "contractId",
+//           foreignField: "_id",
+//           as: "contract",
+//         },
+//       },
+//       {
+//         $lookup: {
+//           from: "customers",
+//           localField: "noti_senderId",
+//           foreignField: "_id",
+//           as: "sender",
+//         },
+//       },
+//       {
+//         $sort: { createdAt: -1 },
+//       },
+//       {
+//         $project: {
+//           noti_type: 1,
+//           noti_content: 1,
+//           noti_status: 1,
+//           isRead: 1,
+//           createdAt: 1,
+//           actionType: 1,
+//           sender: {
+//             $arrayElemAt: ["$sender", 0],
+//           },
+//           contract: {
+//             $arrayElemAt: ["$contract", 0],
+//           },
+//         },
+//       },
+//     ]);
 
-    return notifications;
-  } catch (error) {
-    throw new Error(`Error getting owner notifications: ${error.message}`);
-  }
-};
+//     return notifications;
+//   } catch (error) {
+//     throw new Error(`Error getting owner notifications: ${error.message}`);
+//   }
+// };
+
+// const getCustomerNotifications = async (customerId) => {
+//   try {
+//     const notifications = await NOTI.aggregate([
+//       {
+//         $match: {
+//           noti_receiverId: convertToObjectIdMongodb(customerId),
+//           senderType: "owner",
+//         },
+//       },
+//       {
+//         $lookup: {
+//           from: "contracts",
+//           localField: "contractId",
+//           foreignField: "_id",
+//           as: "contract",
+//         },
+//       },
+//       {
+//         $lookup: {
+//           from: "owners",
+//           localField: "noti_senderId",
+//           foreignField: "_id",
+//           as: "sender",
+//         },
+//       },
+//       {
+//         $sort: { createdAt: -1 },
+//       },
+//       {
+//         $project: {
+//           noti_type: 1,
+//           noti_content: 1,
+//           noti_status: 1,
+//           isRead: 1,
+//           createdAt: 1,
+//           actionType: 1,
+//           sender: {
+//             $arrayElemAt: ["$sender", 0],
+//           },
+//           contract: {
+//             $arrayElemAt: ["$contract", 0],
+//           },
+//         },
+//       },
+//     ]);
+
+//     return notifications;
+//   } catch (error) {
+//     throw new Error(`Error getting customer notifications: ${error.message}`);
+//   }
+// };
 
 const getCustomerNotifications = async (customerId) => {
   try {
-    const notifications = await NOTI.aggregate([
-      {
-        $match: {
-          noti_receiverId: convertToObjectIdMongodb(customerId),
-          senderType: "owner",
-        },
-      },
-      {
-        $lookup: {
-          from: "contracts",
-          localField: "contractId",
-          foreignField: "_id",
-          as: "contract",
-        },
-      },
-      {
-        $lookup: {
-          from: "owners",
-          localField: "noti_senderId",
-          foreignField: "_id",
-          as: "sender",
-        },
-      },
-      {
-        $sort: { createdAt: -1 },
-      },
-      {
-        $project: {
-          noti_type: 1,
-          noti_content: 1,
-          noti_status: 1,
-          isRead: 1,
-          createdAt: 1,
-          actionType: 1,
-          sender: {
-            $arrayElemAt: ["$sender", 0],
+    const notifications = await NOTI.find({
+      noti_receiverId: convertToObjectIdMongodb(customerId),
+      senderType: "owner",
+    })
+      .populate({
+        path: "contractId",
+        populate: [
+          {
+            path: "vehicleId",
+            select: "brand model license price images",
           },
-          contract: {
-            $arrayElemAt: ["$contract", 0],
+          {
+            path: "customerId",
+            select: "name phone email",
           },
-        },
-      },
-    ]);
+          {
+            path: "ownerId",
+            select: "name phone email",
+          },
+        ],
+      })
+      .populate("noti_senderId", "name image")
+      .sort({ createdAt: -1 });
 
     return notifications;
   } catch (error) {
     throw new Error(`Error getting customer notifications: ${error.message}`);
+  }
+};
+
+const getOwnerNotifications = async (ownerId) => {
+  try {
+    const notifications = await NOTI.find({
+      noti_receiverId: convertToObjectIdMongodb(ownerId),
+      senderType: "customer",
+    })
+      .populate({
+        path: "contractId",
+        populate: [
+          {
+            path: "vehicleId",
+            select: "brand model license price images",
+          },
+          {
+            path: "customerId",
+            select: "name phone email",
+          },
+          {
+            path: "ownerId",
+            select: "name phone email",
+          },
+        ],
+      })
+      .populate("noti_senderId", "name image")
+      .sort({ createdAt: -1 });
+
+    return notifications;
+  } catch (error) {
+    throw new Error(`Error getting owner notifications: ${error.message}`);
   }
 };
 

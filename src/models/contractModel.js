@@ -29,7 +29,6 @@ const contractSchema = new Schema(
       },
       rejectionReason: String,
       confirmedAt: Date,
-      confirmedAt: Date,
     },
     customerConfirmed: {
       status: {
@@ -37,7 +36,6 @@ const contractSchema = new Schema(
         default: false,
       },
       rejectionReason: String,
-      confirmedAt: Date,
       confirmedAt: Date,
     },
     status: {
@@ -68,7 +66,7 @@ const contractSchema = new Schema(
         return new Date(Date.now() + 24 * 60 * 60 * 1000);
       },
     },
-    contractPhone:{
+    contractPhone: {
       type: Number,
       default: null,
     },
@@ -116,10 +114,10 @@ contractSchema.pre("save", async function (next) {
     this.status = "cancelled";
   } else if (this.ownerConfirmed.status && this.customerConfirmed.status) {
     this.status = "active";
-  } else if (this.customerConfirmed.status && !this.ownerConfirmed.status) {
+    // } else if (this.customerConfirmed.status && !this.ownerConfirmed.status) {
+    //   this.status = "pending";
+  } else if (this.ownerConfirmed.status && this.customerConfirmed.status) {
     this.status = "pending";
-  } else {
-    this.status = "draft";
   }
   next();
 });

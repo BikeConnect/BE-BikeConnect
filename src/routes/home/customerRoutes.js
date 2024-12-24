@@ -64,9 +64,17 @@ router.get(
   customerController.analyzeIdentityCard
 );
 
-router.put("/customer-change-password", verifyToken, customerController.customer_change_password);
+router.put(
+  "/customer-change-password",
+  verifyToken,
+  customerController.customer_change_password
+);
 
-router.get("/customer/vehicle-history", verifyToken, customerController.get_customer_booking_history);
+router.get(
+  "/customer/vehicle-history",
+  verifyToken,
+  customerController.get_customer_booking_history
+);
 
 router.put("/customer/alter-address", verifyToken, customerController.customer_alter_address);
 

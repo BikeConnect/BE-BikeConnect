@@ -52,7 +52,7 @@ router.post(
   customerController.upload_customer_profile_image
 );
 
-router.patch(
+router.put(
   "/customer/upload-identity-card",
   verifyToken,
   customerController.upload_customer_identity_card

@@ -17,12 +17,55 @@ AWS.config.update({
 
 const rekognition = new AWS.Rekognition();
 
+const fetchImageFromCloudinary = async (imageUrl) => {
+  try {
+    // Kiểm tra URL gốc trước
+    console.log("Original URL:", imageUrl);
+
+    // Thay đổi cách transform URL
+    const transformedUrl = imageUrl.includes("/upload/")
+      ? imageUrl.replace("/upload/", "/upload/q_auto,f_auto,fl_lossy/")
+      : imageUrl;
+
+    console.log("Transformed URL:", transformedUrl);
+
+    const response = await fetch(transformedUrl, {
+      headers: {
+        Accept: "image/*",
+      },
+      timeout: 10000, // 10 seconds timeout
+    });
+
+    if (!response.ok) {
+      // Nếu URL đã transform bị lỗi, thử lại với URL gốc
+      console.log("Trying original URL as fallback");
+      const originalResponse = await fetch(imageUrl, {
+        headers: {
+          Accept: "image/*",
+        },
+        timeout: 10000,
+      });
+
+      if (!originalResponse.ok) {
+        throw new Error(
+          `Failed to fetch image: ${originalResponse.statusText}`
+        );
+      }
+      return await originalResponse.buffer();
+    }
+
+    return await response.buffer();
+  } catch (error) {
+    console.error("Error fetching image from Cloudinary:", error);
+    throw error;
+  }
+};
+
 const analyzeIDCard = async (imageUrl) => {
   try {
     console.log("Starting image analysis for URL:", imageUrl);
 
-    const response = await fetch(imageUrl);
-    const imageBuffer = await response.buffer();
+    const imageBuffer = await fetchImageFromCloudinary(imageUrl);
     console.log("Image buffer size:", imageBuffer.length);
 
     // Kiểm tra kích thước file
@@ -122,7 +165,7 @@ const analyzeIDCard = async (imageUrl) => {
         hasFace: faceResults.FaceDetails.length > 0,
         detectedTexts: normalizedTexts.map((text) => {
           const vietnameseText = text.DetectedText.replace(
-            /Ã|À|Á|Ạ|Ả|Ã|Â|�������|Ấ|Ậ|��|Ẫ|Ă|Ằ|Ắ|Ặ|Ẳ|Ẵ/g,
+            /Ã|À|Á|Ạ|Ả|Ã|Â|�����������������������������|Ấ|Ậ|��|Ẫ|Ă|Ằ|Ắ|Ặ|Ẳ|Ẵ/g,
             "A"
           )
             .replace(/È|É|Ẹ|Ẻ|Ẽ|Ê|Ề|Ế|Ệ|Ể|Ễ/g, "E")
@@ -159,10 +202,12 @@ const analyzeIDCard = async (imageUrl) => {
         analysis.issues.push("Ảnh quá tối");
       }
 
-      if (analysis.details.sharpness < 40) {
+      if (analysis.details.sharpness > 15) {
         analysis.isValid = false;
         analysis.issues.push("Ảnh không rõ nét");
       }
+
+      console.log("Image sharpness:", analysis.details.sharpness);
 
       if (normalizedTexts.length < 5) {
         analysis.isValid = false;
@@ -198,29 +243,15 @@ const detectImageManipulation = async (imageBuffer) => {
     const dimensions = imageSize(imageBuffer);
     let exifData = {};
 
-    // Sửa lại phần generate image hash
-    const imageHashValue = await new Promise((resolve, reject) => {
-      imageHash(
-        {
-          data: imageBuffer,
-          hash_size: 16,
-          hash_alg: "binary",
-        },
-        (error, data) => {
-          if (error) reject(error);
-          else resolve(data);
-        }
-      );
-    });
-
     try {
       exifData = ExifReader.load(imageBuffer);
-      console.log("Raw EXIF Data:", exifData);
-    } catch (exifError) {
-      console.log("Warning: Could not read EXIF data:", exifError.message);
+    } catch (e) {
+      console.log("No EXIF data found - Suspicious for photo/screenshot");
+      manipulationChecks.issues.push(
+        "Không tìm thấy metadata - Nghi ngờ ảnh photo"
+      );
     }
 
-    // Kiểm tra cơ bản trước
     const manipulationChecks = {
       isManipulated: false,
       issues: [],
@@ -235,151 +266,48 @@ const detectImageManipulation = async (imageBuffer) => {
         colorSpace: metadata.space,
         channels: metadata.channels,
         depth: metadata.depth,
-        dimensions: dimensions,
-        imageHash: imageHashValue,
         stats: imageStats,
       },
     };
 
-    // Mở rộng danh sách kiểm tra phần mềm
-    const editingSoftwarePatterns = [
-      // Adobe Suite
-      /photoshop|lightroom|adobe|illustrator|indesign|bridge|elements/i,
-
-      // Phần mềm chỉnh sửa phổ biến khác
-      /gimp|paint|corel|capture\s*one|affinity|luminar|acdsee/i,
-
-      // Ứng dụng di động
-      /snapseed|vsco|lightx|picsart|facetune|meitu|b612|snow|sweet\s*selfie/i,
-
-      // Công cụ trực tuyến
-      /canva|pixlr|fotor|befunky|photoscape|polarr|ribbet/i,
-
-      // Từ khóa chung
-      /edit|editor|retouch|filter|effect|adjust|modify|enhance/i,
-    ];
-
     const editingSignatures = [
-      // Kiểm tra metadata của phần mềm
-      {
-        condition: () => {
-          return Object.keys(exifData).some((key) =>
-            editingSoftwarePatterns.some((pattern) => pattern.test(key))
-          );
-        },
-        message: "Phát hiện metadata của phần mềm chỉnh sửa ảnh",
-      },
-
-      // Kiểm tra tỷ lệ nén
-      {
-        condition: () => {
-          const expectedSize =
-            dimensions.width * dimensions.height * (metadata.channels || 3);
-          const compressionRatio = imageBuffer.length / expectedSize;
-          return compressionRatio < 0.1; // Tỷ lệ nén quá cao
-        },
-        message: "Phát hiện tỷ lệ nén bất thường",
-      },
-
-      // Kiểm tra nhiễu ảnh
-      {
-        condition: () => {
-          return imageStats.channels.some((channel) => {
-            const { mean, std } = channel;
-            return std < mean * 0.1; // Độ lệch chuẩn quá thấp so với giá trị trung bình
-          });
-        },
-        message: "Phát hiện dấu hiệu chỉnh sửa trong phân bố màu sắc",
-      },
-
-      // Kiểm tra thời gian chỉnh sửa
-      {
-        condition: () => {
-          const originalTime = new Date(exifData.DateTimeOriginal?.description);
-          const modifyTime = new Date(exifData.ModifyDate?.description);
-          return (
-            !isNaN(originalTime) &&
-            !isNaN(modifyTime) &&
-            modifyTime > originalTime
-          );
-        },
-        message: "Thời gian chỉnh sửa khác với thời gian chụp",
-      },
-
-      // Kiểm tra bất thường trong kênh màu
+      // 1. Kiểm tra chi tiết phân bố màu sắc
       {
         condition: () => {
           if (!imageStats.channels) return false;
-          return imageStats.channels.some((channel) => {
-            return channel.entropy < 6.5 || channel.std < 15;
+          const channels = imageStats.channels;
+
+          // Kiểm tra độ đồng đều màu sắc
+          const colorUniformity = channels.map((channel) => {
+            const { mean, std, entropy } = channel;
+            // Tính độ lệch chuẩn tương đối
+            const relativeStd = std / mean;
+            // Kiểm tra entropy thấp bất thường
+            const lowEntropy = entropy < 4.5;
+            // Kiểm tra độ lệch chuẩn quá thấp
+            const lowVariation = relativeStd < 0.15;
+
+            return lowEntropy || lowVariation;
           });
-        },
-        message: "Phát hiện bất thường trong phân bố màu sắc",
-      },
 
-      // Kiểm tra định dạng và độ sâu bit
-      {
-        condition: () => {
-          return metadata.space !== "srgb" || metadata.depth > 8;
-        },
-        message: "Phát hiện bất thường trong không gian màu hoặc độ sâu bit",
-      },
+          // Kiểm tra phân bố histogram
+          const histogramAnalysis = channels.map((channel) => {
+            const { count } = channel;
+            // Tìm peaks trong histogram
+            const peaks = findHistogramPeaks(count);
+            // Ảnh photo thường có ít peaks hơn
+            return peaks.length < 3;
+          });
 
-      // Kiểm tra phiên bản lưu file
-      {
-        condition: () => {
           return (
-            exifData.Software?.description?.includes("version") ||
-            exifData.Software?.description?.includes("ver.") ||
-            metadata.hasAlpha
+            colorUniformity.some((x) => x) || histogramAnalysis.some((x) => x)
           );
         },
-        message: "Phát hiện dấu hiệu của file đã qua chỉnh sửa",
+        message:
+          "Phát hiện bất thường trong phân bố màu sắc - Dấu hiệu của ảnh photo",
       },
 
-      // Kiểm tra bất thường trong dữ liệu pixel
-      {
-        condition: async () => {
-          try {
-            // Đọc ảnh dựa trên định dạng
-            let imageData;
-            if (metadata.format === "png") {
-              const png = PNG.sync.read(imageBuffer);
-              imageData = {
-                data: png.data,
-                width: png.width,
-                height: png.height,
-              };
-            } else {
-              const jpegData = jpeg.decode(imageBuffer);
-              imageData = {
-                data: jpegData.data,
-                width: jpegData.width,
-                height: jpegData.height,
-              };
-            }
-
-            // Kiểm tra sự khác biệt pixel giữa các vùng
-            const diff = new pixelDiff({
-              imageA: imageData,
-              imageB: imageData,
-              thresholdType: pixelDiff.THRESHOLD_PERCENT,
-              threshold: 0.01,
-            });
-
-            const diffResult = await diff.compare();
-            return (
-              diffResult.differences > imageData.width * imageData.height * 0.01
-            );
-          } catch (e) {
-            console.error("Error in pixel analysis:", e);
-            return false;
-          }
-        },
-        message: "Phát hiện bất thường trong dữ liệu pixel của ảnh",
-      },
-
-      // Kiểm tra tính liên tục của dữ liệu
+      // 2. Kiểm tra mẫu pixel và nhiễu
       {
         condition: () => {
           try {
@@ -388,31 +316,134 @@ const detectImageManipulation = async (imageBuffer) => {
                 ? PNG.sync.read(imageBuffer).data
                 : jpeg.decode(imageBuffer).data;
 
-            let discontinuities = 0;
-            for (let i = 0; i < data.length - 4; i += 4) {
-              const diff = Math.abs(data[i] - data[i + 4]);
-              if (diff > 50) discontinuities++;
+            let repeatingPatterns = 0;
+            let noisyRegions = 0;
+            let totalRegions = 0;
+
+            // Kiểm tra từng vùng 4x4 pixel
+            for (let y = 0; y < dimensions.height - 4; y += 4) {
+              for (let x = 0; x < dimensions.width - 4; x += 4) {
+                totalRegions++;
+
+                // Lấy mẫu pixel trong vùng
+                const region = getPixelRegion(data, x, y, dimensions.width);
+
+                // Kiểm tra mẫu lặp lại
+                if (hasRepeatingPattern(region)) {
+                  repeatingPatterns++;
+                }
+
+                // Kiểm tra nhiễu thấp bất thường
+                if (calculateNoiseLevel(region) < 5) {
+                  noisyRegions++;
+                }
+              }
             }
 
-            return discontinuities > (data.length / 4) * 0.1;
+            const patternRatio = repeatingPatterns / totalRegions;
+            const noiseRatio = noisyRegions / totalRegions;
+
+            return patternRatio > 0.3 || noiseRatio > 0.4;
           } catch (e) {
-            console.error("Error in continuity check:", e);
+            console.error("Error in pixel pattern analysis:", e);
             return false;
           }
         },
-        message: "Phát hiện đứt đoạn bất thường trong dữ liệu ảnh",
+        message: "Phát hiện mẫu pixel bất thường - Đặc trưng của ảnh photo",
+      },
+
+      // 3. Kiểm tra metadata và thông tin kỹ thuật
+      {
+        condition: () => {
+          // Kiểm tra các dấu hiệu của thiết bị chụp lại
+          const deviceTraces =
+            /screenshot|screen capture|mobile|phone|camera/i.test(
+              JSON.stringify(exifData)
+            );
+
+          // Kiểm tra thông số kỹ thuật bất thường
+          const technicalAnomalies =
+            [
+              metadata.space !== "srgb",
+              metadata.depth !== 8,
+              !metadata.hasProfile,
+              metadata.density &&
+                (metadata.density < 72 || metadata.density > 300),
+            ].filter(Boolean).length >= 2;
+
+          return deviceTraces || technicalAnomalies;
+        },
+        message: "Phát hiện dấu hiệu kỹ thuật của ảnh photo hoặc screenshot",
       },
     ];
 
-    // Áp dụng tất cả kiểm tra
+    // Helper functions
+    function findHistogramPeaks(histogram) {
+      const peaks = [];
+      for (let i = 1; i < histogram.length - 1; i++) {
+        if (
+          histogram[i] > histogram[i - 1] &&
+          histogram[i] > histogram[i + 1]
+        ) {
+          peaks.push(i);
+        }
+      }
+      return peaks;
+    }
+
+    function getPixelRegion(data, x, y, width) {
+      const region = [];
+      for (let i = 0; i < 4; i++) {
+        for (let j = 0; j < 4; j++) {
+          const idx = ((y + i) * width + (x + j)) * 4;
+          region.push([data[idx], data[idx + 1], data[idx + 2]]);
+        }
+      }
+      return region;
+    }
+
+    function hasRepeatingPattern(region) {
+      // Kiểm tra mẫu lặp lại trong vùng 4x4
+      const patterns = {};
+      for (const pixel of region) {
+        const key = pixel.join(",");
+        patterns[key] = (patterns[key] || 0) + 1;
+      }
+      return Object.values(patterns).some((count) => count > 6);
+    }
+
+    function calculateNoiseLevel(region) {
+      // Tính độ nhiễu trong vùng pixel
+      let totalVariation = 0;
+      for (let i = 0; i < region.length - 1; i++) {
+        const diff =
+          Math.abs(region[i][0] - region[i + 1][0]) +
+          Math.abs(region[i][1] - region[i + 1][1]) +
+          Math.abs(region[i][2] - region[i + 1][2]);
+        totalVariation += diff;
+      }
+      return totalVariation / (region.length - 1);
+    }
+
+    function calculateImageQuality(buffer, dims) {
+      const fileSize = buffer.length;
+      const pixelCount = dims.width * dims.height;
+      const bitsPerPixel = (fileSize * 8) / pixelCount;
+      return Math.min(bitsPerPixel / 24, 1); // Normalize to 0-1
+    }
+
+    // Áp dụng kiểm tra
     editingSignatures.forEach((check) => {
       try {
-        if (check.condition()) {
+        const result = check.condition();
+        console.log(`Check result for ${check.message}:`, result);
+
+        if (result) {
           manipulationChecks.isManipulated = true;
           manipulationChecks.issues.push(check.message);
         }
       } catch (e) {
-        console.log(`Error in check: ${e.message}`);
+        console.error(`Error in check ${check.message}:`, e);
       }
     });
 

@@ -16,7 +16,10 @@ const {
 } = require("../../sendmail/email");
 const { formidable } = require("formidable");
 const bookingModel = require("../../models/bookingModel");
-const { analyzeIDCard, detectImageManipulation } = require("../../services/imageAnalysis.service");
+const {
+  analyzeIDCard,
+  detectImageManipulation,
+} = require("../../services/imageAnalysis.service");
 const cloudinary = require("cloudinary").v2;
 
 const customer_register = async (req, res) => {
@@ -343,7 +346,7 @@ const upload_customer_profile_image = async (req, res) => {
 
 const upload_customer_identity_card = async (req, res) => {
   const { id } = req;
-  const form = formidable({ multiples: true });
+  const form = formidable();
 
   form.parse(req, async (error, _, files) => {
     cloudinary.config({
@@ -382,39 +385,38 @@ const upload_customer_identity_card = async (req, res) => {
           folder: "IdentityCards",
           resource_type: "auto",
           allowed_formats: ["jpg", "png", "jpeg"],
-          transformation: [{ quality: "auto" }],
+          transformation: [
+            { quality: "auto" },
+            { sharpness: 50 },
+            { brightness: 10 },
+          ],
         })
       );
 
       const uploadedImages = await Promise.all(uploadPromises);
-
       const imageData = uploadedImages.map((img) => ({
         url: img.secure_url,
         publicId: img.public_id,
       }));
 
-      if (uploadPromises) {
-        const updatedCustomer = await customerModel
-          .findByIdAndUpdate(
-            id,
-            {
-              $set: { identityCard: imageData },
-            },
-            { new: true }
-          )
-          .select("-password");
+      const updatedCustomer = await customerModel
+        .findByIdAndUpdate(
+          id,
+          { $set: { identityCard: imageData } },
+          { new: true }
+        )
+        .select("-password");
 
+      if (updatedCustomer) {
         responseReturn(res, 200, {
-          message: "Identity Card Image Updated Successfully",
+          message: "Identity Card Images Updated Successfully",
           userInfo: updatedCustomer,
         });
       } else {
-        responseReturn(res, 404, {
-          message: "Identity Card Image Update Failed",
-        });
+        responseReturn(res, 404, { error: "Failed to update identity card" });
       }
     } catch (error) {
-      console.log("error updating identity card:", error.message);
+      console.error("Error updating identity card:", error.message);
       responseReturn(res, 500, { error: error.message });
     }
   });
@@ -563,5 +565,5 @@ module.exports = {
   upload_customer_identity_card,
   analyzeIdentityCard,
   get_customer_booking_history,
-  customer_alter_address
+  customer_alter_address,
 };

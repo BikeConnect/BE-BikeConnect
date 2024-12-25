@@ -13,6 +13,7 @@ const io = socket(serverIO, {
 
 var allCustomers = [];
 var allOwners = [];
+let admin = {};
 
 const addCustomer = (customerId, socketId, userInfo) => {
   const checkCustomer = allCustomers.some(
@@ -56,6 +57,14 @@ io.on("connection", (soc) => {
   // add owner
   soc.on("add_owner", (ownerId, userInfo) => {
     addOwner(ownerId, soc.id, userInfo);
+    io.emit("active_owner", allOwners);
+  });
+  // add admin
+  soc.on("add_admin", (adminInfo) => {
+    delete adminInfo.email;
+    delete adminInfo.password;
+    admin = adminInfo;
+    admin.socketId = soc.id;
     io.emit("active_owner", allOwners);
   });
 
@@ -106,6 +115,20 @@ io.on("connection", (soc) => {
     const owner = findOwner(msg.receiverId);
     if (owner !== undefined) {
       soc.to(owner.socketId).emit("customer_message", msg);
+    }
+  });
+
+   // gui message tu phia admin cho owner
+   soc.on("send_message_admin_to_owner", (msg) => {
+    const owner = findOwner(msg.receiverId);
+    if (owner !== undefined) {
+      soc.to(owner.socketId).emit("received_admin_message", msg);
+    }
+  });
+   //gui message tu phia owner cho admin
+   soc.on("send_message_owner_to_admin", (msg) => {
+    if (admin.socketId) {
+      soc.to(admin.socketId).emit("received_owner_message", msg);
     }
   });
 

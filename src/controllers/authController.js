@@ -35,14 +35,41 @@ const admin_login = async (req, res) => {
         });
         responseReturn(res, 200, {
           accessToken,
-          message: "Login Successfully",
+          message: "Đăng nhập thành công",
         });
       } else {
-        responseReturn(res, 404, { error: "Password Wrong" });
+        responseReturn(res, 404, { error: "Mật khẩu không đúng" });
       }
     }
   } catch (error) {
     responseReturn(res, 500, { error: error.message });
+  }
+};
+
+const admin_logout = async (req, res) => {
+  try {
+    const token =
+      req.cookies.accessToken || req.headers.authorization?.split(" ")[1];
+
+    if (token) {
+      await userRefreshTokenModel.deleteOne({ userId: req.id });
+    }
+
+    res.clearCookie("accessToken", {
+      httpOnly: true,
+      path: "/",
+      sameSite: "lax",
+    });
+
+    return responseReturn(res, 200, {
+      success: true,
+      message: "Đăng xuất thành công",
+    });
+  } catch (error) {
+    return responseReturn(res, 500, {
+      success: false,
+      error: "Có lỗi xảy ra khi đăng xuất",
+    });
   }
 };
 
@@ -395,6 +422,11 @@ const getUser = async (req, res) => {
         .findById(id)
         .select("-__v -createdAt -updatedAt -password");
       responseReturn(res, 200, { userInfo: customer });
+    } else if (role === "admin") {
+      const admin = await adminModel
+        .findById(id)
+        .select("-__v -createdAt -updatedAt -password");
+      responseReturn(res, 200, { userInfo: admin });
     }
   } catch (error) {
     responseReturn(res, 500, { error: error.message });
@@ -403,6 +435,7 @@ const getUser = async (req, res) => {
 
 module.exports = {
   admin_login,
+  admin_logout,
   owner_register,
   owner_login,
   owner_logout,

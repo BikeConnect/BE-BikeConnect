@@ -7,8 +7,9 @@ const router = require("express").Router();
 router.get("/auth/check-auth", verifyToken, checkAuthOwner);
 
 router.post("/auth/admin-login", authController.admin_login);
-router.post("/auth/owner-register", authController.owner_register);
+router.post("/auth/admin-logout", authController.admin_logout);
 
+router.post("/auth/owner-register", authController.owner_register);
 router.post("/auth/owner-login", authController.owner_login);
 router.post("/auth/owner-logout", authController.owner_logout);
 

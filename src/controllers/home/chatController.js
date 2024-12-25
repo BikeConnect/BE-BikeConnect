@@ -2,6 +2,7 @@ const ownerModel = require("../../models/ownerModel");
 const customerModel = require("../../models/customerModel");
 const ownerCustomerModel = require("../../models/message/ownerCustomerModel");
 const ownerCustomerMessageModel = require("../../models/message/ownerCustomerMsgModel");
+const adminOwnerMessageModel = require("../../models/message/adminOwnerMsgModel");
 const { responseReturn } = require("../../utils/response");
 
 const add_customer_owner = async (req, res) => {
@@ -412,7 +413,105 @@ const owner_send_messages = async (req, res) => {
   } catch (error) {
     console.log(error.message);
   }
-}
+};
+
+const get_owners = async (req, res) => {
+  try {
+    const owners = await ownerModel.find({});
+    responseReturn(res, 200, { owners });
+  } catch (error) {
+    console.log(error.message);
+  }
+};
+
+const owner_admin_message = async (req, res) => {
+  const { senderId, receiverId, message, senderName } = req.body;
+  try {
+    const messageData = await adminOwnerMessageModel.create({
+      senderId,
+      receiverId,
+      message,
+      senderName,
+    });
+    responseReturn(res, 201, { message: messageData });
+  } catch (error) {
+    console.log(error.message);
+  }
+};
+
+const get_admin_messages = async (req, res) => {
+  const { receiverId } = req.params;
+  const id = "";
+  try {
+    const messages = await adminOwnerMessageModel.find({
+      $or: [
+        {
+          $and: [
+            {
+              receiverId: { $eq: receiverId },
+            },
+            {
+              senderId: { $eq: id },
+            },
+          ],
+        },
+        {
+          $and: [
+            {
+              receiverId: { $eq: id },
+            },
+            {
+              senderId: { $eq: receiverId },
+            },
+          ],
+        },
+      ],
+    });
+
+    let currentOwner = {};
+    if (receiverId) {
+      currentOwner = await ownerModel.findById(receiverId);
+    }
+    responseReturn(res, 200, { messages, currentOwner });
+  } catch (error) {
+    console.log(error.message);
+  }
+};
+
+const get_owner_messages = async (req, res) => {
+  const receiverId = "";
+  const { id } = req;
+  try {
+    const messages = await adminOwnerMessageModel.find({
+      $or: [
+        {
+          $and: [
+            {
+              receiverId: { $eq: receiverId },
+            },
+            {
+              senderId: { $eq: id },
+            },
+          ],
+        },
+        {
+          $and: [
+            {
+              receiverId: { $eq: id },
+            },
+            {
+              senderId: { $eq: receiverId },
+            },
+          ],
+        },
+      ],
+    });
+
+    responseReturn(res, 200, { messages });
+  } catch (error) {
+    console.log(error.message);
+  }
+};
 
 module.exports = {
   add_customer_owner,
@@ -420,5 +519,9 @@ module.exports = {
   send_message_to_owner,
   get_customers,
   get_customer_message,
-  owner_send_messages
+  owner_send_messages,
+  get_owners,
+  owner_admin_message,
+  get_admin_messages,
+  get_owner_messages,
 };

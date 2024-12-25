@@ -86,10 +86,11 @@ const get_owner_request = async (req, res) => {
     const owners = await ownerModel
       .find({ status: "pending" })
       .sort({ createdAt: -1 });
-
-    responseReturn(res, 200, { owners });
+    const totalOwner = await ownerModel
+      .find({ status: "pending" })
+      .countDocuments();
+    responseReturn(res, 200, { owners, totalOwner });
   } catch (error) {
-    console.log(error.message);
     responseReturn(res, 500, { error: error.message });
   }
 };
@@ -101,7 +102,7 @@ const update_owner_status = async (req, res) => {
     const owner = await ownerModel.findById(ownerId);
     responseReturn(res, 200, {
       owner,
-      message: "Update Status Owner Successfully",
+      message: "Đã cập nhật thành công tài khoản của chủ xe",
     });
   } catch (error) {
     console.log(error.message);
@@ -111,8 +112,14 @@ const update_owner_status = async (req, res) => {
 
 const get_active_owner = async (req, res) => {
   try {
-    const owner = await ownerModel.find({ status: "active" });
-    responseReturn(res, 200, { owner });
+    const owners = await ownerModel
+      .find({ status: "active" })
+      .sort({ createdAt: -1 });
+
+    const totalOwner = await ownerModel
+      .find({ status: "active" })
+      .countDocuments();
+    responseReturn(res, 200, { owners, totalOwner });
   } catch (error) {
     console.log(error.message);
     responseReturn(res, 500, { error: error.message });
@@ -121,8 +128,8 @@ const get_active_owner = async (req, res) => {
 
 const get_deactive_owner = async (req, res) => {
   try {
-    const owner = await ownerModel.find({ status: "deactive" });
-    responseReturn(res, 200, { owner });
+    const owners = await ownerModel.find({ status: "deactivate" });
+    responseReturn(res, 200, { owners });
   } catch (error) {
     console.log(error.message);
     responseReturn(res, 500, { error: error.message });
@@ -202,14 +209,14 @@ const get_customer_booking_request = async (req, res) => {
     const totalRequests = await contractModel.countDocuments({
       ownerId: id,
       status: "pending",
-      'ownerConfirmed.status': false,
+      "ownerConfirmed.status": false,
     });
 
     const bookings = await contractModel
       .find({
         ownerId: id,
         status: "pending",
-        'ownerConfirmed.status': false,
+        "ownerConfirmed.status": false,
       })
       .populate("customerId", "name email phone alterAddress")
       .populate("vehicleId", "brand model price license address")
@@ -253,8 +260,8 @@ const get_customer_booking_request = async (req, res) => {
         totalItems: totalRequests,
         itemsPerPage: limit,
         hasNextPage,
-        hasPrevPage
-      }
+        hasPrevPage,
+      },
     });
   } catch (error) {
     console.log(error.message);
@@ -336,8 +343,8 @@ const get_owner_all_bookings_history = async (req, res) => {
         totalItems: totalBookings,
         itemsPerPage: limit,
         hasNextPage,
-        hasPrevPage
-      }
+        hasPrevPage,
+      },
     });
   } catch (error) {
     console.log(error.message);
@@ -373,8 +380,8 @@ const get_owner_vehicles = async (req, res) => {
         totalItems: totalVehicles,
         itemsPerPage: limit,
         hasNextPage,
-        hasPrevPage
-      }
+        hasPrevPage,
+      },
     });
   } catch (error) {
     console.error(error);
@@ -464,27 +471,27 @@ const get_owner_booking_history = async (req, res) => {
     const skip = (page - 1) * limit;
 
     const totalBookings = await bookingModel.countDocuments({
-      vehicleId: { $in: await vehicle.find({ ownerId: id }).distinct('_id') }
+      vehicleId: { $in: await vehicle.find({ ownerId: id }).distinct("_id") },
     });
 
     const bookings = await bookingModel
       .find({
-        vehicleId: { $in: await vehicle.find({ ownerId: id }).distinct('_id') }
+        vehicleId: { $in: await vehicle.find({ ownerId: id }).distinct("_id") },
       })
-      .populate('vehicleId', 'brand model license price')
-      .populate('contractId', 'totalAmount')
-      .select('status startDate endDate totalPrice')
+      .populate("vehicleId", "brand model license price")
+      .populate("contractId", "totalAmount")
+      .select("status startDate endDate totalPrice")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
       .lean();
 
-    const formattedBookings = bookings.map(booking => ({
+    const formattedBookings = bookings.map((booking) => ({
       _id: booking._id,
       vehicleInfo: {
-        brand: booking.vehicleId?.brand || '',
-        model: booking.vehicleId?.model || '',
-        license: booking.vehicleId?.license || '',
+        brand: booking.vehicleId?.brand || "",
+        model: booking.vehicleId?.model || "",
+        license: booking.vehicleId?.license || "",
       },
       bookingStatus: booking.status,
       startDate: booking.startDate,
@@ -510,8 +517,8 @@ const get_owner_booking_history = async (req, res) => {
         totalItems: totalBookings,
         itemsPerPage: limit,
         hasNextPage,
-        hasPrevPage
-      }
+        hasPrevPage,
+      },
     });
   } catch (error) {
     console.error(error);

@@ -15,10 +15,8 @@ const {
   sendResetSuccessEmail,
 } = require("../../sendmail/email");
 const { formidable } = require("formidable");
-const {
-  detectImageManipulation,
-} = require("../../services/imageAnalysis.service");
 const bookingModel = require("../../models/bookingModel");
+const { analyzeIDCard, detectImageManipulation } = require("../../services/imageAnalysis.service");
 const cloudinary = require("cloudinary").v2;
 
 const customer_register = async (req, res) => {
@@ -438,23 +436,30 @@ const analyzeIdentityCard = async (req, res) => {
 
     const analysisResults = await Promise.all(
       customer.identityCard.map(async (card) => {
-        const analysis = await detectImageManipulation(card.url);
+        const analysis = await analyzeIDCard(card.url);
         return {
           imageUrl: card.url,
+          publicId: card.publicId,
           ...analysis,
         };
       })
     );
 
-    const manipulatedImages = analysisResults.filter(
-      (result) => result.isManipulated
-    );
+    // Kiểm tra tổng thể
+    const hasValidIDCard = analysisResults.some((result) => result.isValid);
+    const allIssues = analysisResults.reduce((issues, result) => {
+      return [...issues, ...result.issues];
+    }, []);
 
     responseReturn(res, 200, {
       message: "Identity card analysis completed",
       results: analysisResults,
-      hasSuspiciousImages: manipulatedImages.length > 0,
-      manipulatedImages,
+      summary: {
+        hasValidIDCard,
+        totalImages: analysisResults.length,
+        validImages: analysisResults.filter((r) => r.isValid).length,
+        allIssues: [...new Set(allIssues)],
+      },
     });
   } catch (error) {
     console.error("Error analyzing identity card:", error);

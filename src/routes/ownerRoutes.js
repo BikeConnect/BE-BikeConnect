@@ -30,11 +30,11 @@ router.put("/owner/update-vehicle-status/:vehicleId", verifyToken, ownerControll
 
 router.get("/owner/vehicle-history", verifyToken, ownerController.get_owner_booking_history);
 
-// router.put(
-//   "/owner/update-profile",
-//   verifyToken,
-//   ownerController.owner_update_profile
-// );
+router.put(
+  "/owner/update-profile",
+  verifyToken,
+  ownerController.owner_update_profile
+);
 
 // router.patch(
 //   "/owner/upload-identity-card",

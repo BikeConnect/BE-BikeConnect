@@ -11,9 +11,10 @@ const bookingController = require("../../controllers/home/bookingController");
 // Owner/Customer
 router.use(verifyToken);
 
-router.get("/sorted-by-distance", async (req, res) => {
-  await vehicleController.getVehiclesSortedByDistance(req, res);
-});
+router.get(
+  "/sorted-by-distance",
+  asyncHandler(vehicleController.getVehiclesSortedByDistance)
+);
 
 router.get("", asyncHandler(notificationController.listNotiByCus));
 

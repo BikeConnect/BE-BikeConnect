@@ -275,7 +275,12 @@ class VehicleController {
         })
       );
 
-      distances.sort((a, b) => a.distance.value - b.distance.value);
+      distances.sort((a, b) => {
+        if (!a.distance || !b.distance) {
+          return 0; // or handle the error as needed
+        }
+        return a.distance.value - b.distance.value;
+      });
 
       res.json({
         message: "Vehicles sorted by distance",
